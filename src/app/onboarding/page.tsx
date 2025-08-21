@@ -35,7 +35,7 @@ export default function OnboardingPage() {
   const form = useForm<z.infer<typeof onboardingSchema>>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      role: "",
+      role: "user",
     }
   });
 
@@ -83,9 +83,9 @@ export default function OnboardingPage() {
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, {
         office: values.office,
-        role: values.role,
+        role: values.role, // The role here is the requested role. Admin will confirm.
         onboardingComplete: true,
-        status: 'pending', // Status is now standardized
+        status: 'pending',
         updatedAt: serverTimestamp(),
       });
 
@@ -163,11 +163,11 @@ export default function OnboardingPage() {
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Your Role</FormLabel>
+                    <FormLabel>Your Desired Role</FormLabel>
                      <FormControl>
                         <Input placeholder="e.g., Clerk, Officer, Dept. Head" {...field} />
                     </FormControl>
-                    <FormMessage />
+                     <FormMessage />
                   </FormItem>
                 )}
               />

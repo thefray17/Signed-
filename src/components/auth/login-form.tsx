@@ -44,13 +44,15 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      // The AuthRedirect component will handle routing.
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      // Force a token refresh to get the latest custom claims.
+      await userCredential.user.getIdToken(true);
+      
       toast({
         title: "Login Successful",
         description: `Welcome back!`,
       });
-      // Intentionally not pushing router here, AuthRedirect handles it.
+      // The AuthRedirect component will handle routing.
       
     } catch (error: any) {
       console.error(error);
