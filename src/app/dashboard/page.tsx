@@ -47,11 +47,11 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const recentDocuments = [
-  { id: "DOC-001", title: "Budget Proposal 2024", status: "In Transit", office: "Mayor's Office", lastUpdate: "2 hours ago" },
-  { id: "DOC-002", title: "HR Policy Update", status: "Signed", office: "HR Department", lastUpdate: "1 day ago" },
-  { id: "DOC-003", title: "IT Infrastructure Plan", status: "Rejected", office: "Accounting", lastUpdate: "3 days ago" },
-  { id: "DOC-004", title: "Community Event Permit", status: "Completed", office: "Clerk's Office", lastUpdate: "5 days ago" },
-  { id: "DOC-005", title: "Annual Financial Report", status: "Draft", office: "My Drafts", lastUpdate: "1 week ago" },
+  { id: "DOC-001", title: "Budget Proposal 2024", status: "in_transit", office: "Mayor's Office", lastUpdate: "2 hours ago" },
+  { id: "DOC-002", title: "HR Policy Update", status: "signed", office: "HR Department", lastUpdate: "1 day ago" },
+  { id: "DOC-003", title: "IT Infrastructure Plan", status: "rejected", office: "Accounting", lastUpdate: "3 days ago" },
+  { id: "DOC-004", title: "Community Event Permit", status: "completed", office: "Clerk's Office", lastUpdate: "5 days ago" },
+  { id: "DOC-005", title: "Annual Financial Report", status: "draft", office: "My Drafts", lastUpdate: "1 week ago" },
 ];
 
 const addDocumentSchema = z.object({
@@ -68,21 +68,22 @@ export default function DashboardPage() {
     defaultValues: { title: "" },
   });
 
-  async function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
+    async function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
     if (!user || !user.office) {
         toast({ variant: 'destructive', title: 'Error', description: 'User or office information is missing.' });
         return;
     }
     try {
+        const creationTime = serverTimestamp();
         await addDoc(collection(db, "documents"), {
             title: values.title,
             ownerId: user.uid,
-            createdAt: serverTimestamp(),
+            createdAt: creationTime,
             currentStatus: 'draft',
             currentOfficeId: user.office,
             history: [
                 {
-                    timestamp: serverTimestamp(),
+                    timestamp: creationTime,
                     status: 'draft',
                     officeId: user.office,
                     notes: 'Document created.',
@@ -221,10 +222,10 @@ export default function DashboardPage() {
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge className="text-xs" variant={
-                      doc.status === "Signed" || doc.status === "Completed" ? "default" :
-                      doc.status === "Rejected" ? "destructive" : "secondary"
+                      doc.status === "signed" || doc.status === "completed" ? "default" :
+                      doc.status === "rejected" ? "destructive" : "secondary"
                     }>
-                      {doc.status}
+                      {doc.status.replace("_", " ")}
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{doc.office}</TableCell>

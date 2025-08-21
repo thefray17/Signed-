@@ -18,9 +18,9 @@ export default function Home() {
             <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
-                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
+                  <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
                     Streamline Your Document Workflow
-                  </h1>
+                  </h2>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
                     Welcome to Signed! - the efficient solution for managing and tracking official documents. Ensure your papers reach the right office, every time.
                   </p>
@@ -49,7 +49,7 @@ export default function Home() {
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Key Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">How It Works</h2>
+                <h3 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">How It Works</h3>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Our platform provides a seamless experience for document submission, tracking, and approval.
                 </p>
@@ -57,19 +57,19 @@ export default function Home() {
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:gap-16 mt-12">
               <div className="grid gap-1 text-center">
-                <h3 className="text-lg font-bold">User Authentication</h3>
+                <h4 className="text-lg font-bold">User Authentication</h4>
                 <p className="text-sm text-muted-foreground">
                   Secure sign-up and login with role selection to get you started quickly.
                 </p>
               </div>
               <div className="grid gap-1 text-center">
-                <h3 className="text-lg font-bold">Document Tracking</h3>
+                <h4 className="text-lg font-bold">Document Tracking</h4>
                 <p className="text-sm text-muted-foreground">
                   Real-time status updates on your documents, just like tracking a package.
                 </p>
               </div>
               <div className="grid gap-1 text-center">
-                <h3 className="text-lg font-bold">Admin Management</h3>
+                <h4 className="text-lg font-bold">Admin Management</h4>
                 <p className="text-sm text-muted-foreground">
                   Admins can manage offices, users, and roles to keep the system organized and secure.
                 </p>
