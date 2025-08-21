@@ -4,7 +4,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import { FileSignature, Home, FileText, Bell, LogOut, Building } from "lucide-react";
+import { FileSignature, Home, FileText, Bell, LogOut, Building, ShieldAlert } from "lucide-react";
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, useSidebar } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -16,7 +16,7 @@ import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/layout/header';
 
-function DashboardMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'coadmin' | 'admin', onSignOut: () => void }) {
+function DashboardMobileSidebar({ user, onSignOut }: { user: any, onSignOut: () => void }) {
     const { openMobile, setOpenMobile } = useSidebar();
     return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile}>
@@ -47,23 +47,33 @@ function DashboardMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'c
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
-                        {(userRole === 'admin' || userRole === 'coadmin') && (
+                        {(user.role === 'admin' || user.role === 'coadmin') && (
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Manage Offices">
-                                    <Link href="/admin/offices">
+                                <SidebarMenuButton asChild tooltip="Admin Dashboard">
+                                    <Link href="/admin">
                                         <Building />
-                                        <span>Manage Offices</span>
+                                        <span>Admin Dashboard</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>)}
-                            <SidebarMenuItem>
-                            <SidebarMenuButton asChild tooltip="Notifications">
-                                <Link href="/dashboard/notifications">
-                                    <Bell/>
-                                    <span>Notifications</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
+                        {user.isRoot && (
+                             <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip="Root Admin">
+                                    <Link href="/rootadmin">
+                                        <ShieldAlert />
+                                        <span>Root Admin</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        )}
+                        <SidebarMenuItem>
+                        <SidebarMenuButton asChild tooltip="Notifications">
+                            <Link href="/dashboard/notifications">
+                                <Bell/>
+                                <span>Notifications</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarContent>
                 <SidebarFooter>
@@ -122,7 +132,7 @@ export default function DashboardLayout({
 
     return (
         <SidebarProvider>
-             <DashboardMobileSidebar userRole={user.role} onSignOut={handleSignOut} />
+             <DashboardMobileSidebar user={user} onSignOut={handleSignOut} />
              <Sidebar className="hidden md:flex">
                 <SidebarHeader>
                     <div className="flex items-center gap-2 p-2">
@@ -150,21 +160,31 @@ export default function DashboardLayout({
                         </SidebarMenuItem>
                         {(user.role === 'admin' || user.role === 'coadmin') && (
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Manage Offices">
-                                    <Link href="/admin/offices">
+                                <SidebarMenuButton asChild tooltip="Admin Dashboard">
+                                    <Link href="/admin">
                                         <Building />
-                                        <span>Manage Offices</span>
+                                        <span>Admin Dashboard</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>)}
+                        {user.isRoot && (
                             <SidebarMenuItem>
-                            <SidebarMenuButton asChild tooltip="Notifications">
-                                <Link href="/dashboard/notifications">
-                                    <Bell/>
-                                    <span>Notifications</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip="Root Admin">
+                                    <Link href="/rootadmin">
+                                        <ShieldAlert />
+                                        <span>Root Admin</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        )}
+                        <SidebarMenuItem>
+                        <SidebarMenuButton asChild tooltip="Notifications">
+                            <Link href="/dashboard/notifications">
+                                <Bell/>
+                                <span>Notifications</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarContent>
                     <SidebarFooter>

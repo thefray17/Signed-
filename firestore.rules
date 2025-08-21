@@ -1,0 +1,43 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isRoot() { return signedIn() && request.auth.token.isRoot == true; }
+    function isAdmin() { return signedIn() && request.auth.token.role == 'admin'; }
+    function isCoadmin() { return signedIn() && request.auth.token.role == 'coadmin'; }
+    function isElevated() { return isRoot() || isAdmin() || isCoadmin(); }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isElevated());
+      // Let users update their own profile during onboarding, but not their role/status
+      allow update: if signedIn() && request.auth.uid == uid
+                    && !(request.resource.data.role is string)
+                    && !(request.resource.data.status is string)
+                    && !(request.resource.data.isRoot is bool);
+
+      // Only functions can create users or change sensitive fields like roles.
+      allow create, delete: if false;
+    }
+
+    match /offices/{id} {
+      allow read: if signedIn();
+      // Only admins can create/update offices
+      allow write: if isRoot() || isAdmin();
+    }
+    
+    match /documents/{docId} {
+      // Users can create documents and read documents they own or that are in their office
+      allow create: if signedIn();
+      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || resource.data.currentOfficeId == request.auth.token.office);
+      
+      // All other updates must go through a function
+      allow update, delete: if false;
+    }
+
+    // Default deny all other collections
+    match /{path=**}/documents/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

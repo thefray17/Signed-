@@ -6,7 +6,7 @@ import { useState, useTransition, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp, Timestamp, revalidatePath } from "firebase/firestore";
 import { PlusCircle, ArrowUpRight, FileText, CheckCircle2, XCircle, Clock, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,9 +52,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { createDocumentAction } from "./actions";
 import { db } from "@/lib/firebase-app";
-import type { Office } from "@/types";
+import type { Office, DocumentLog } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -134,27 +133,54 @@ export default function DashboardPage() {
     });
 
     startTransition(async () => {
-      const result = await createDocumentAction({
-        title: values.title,
-        workflow: workflowWithNames,
-        userId: user.uid,
-        userOfficeId: user.office as string,
-        userOfficeName: user.officeName || "Unknown Office",
-      });
+      try {
+        const now = Timestamp.now();
+        const history: DocumentLog[] = [
+            {
+                timestamp: now,
+                status: 'draft',
+                officeId: user.office as string,
+                officeName: user.officeName || "Unknown Office",
+                notes: 'Document created.',
+            },
+        ];
 
-      if (result.error) {
-        toast({
-          variant: "destructive",
-          title: "Creation Failed",
-          description: result.error,
+        workflowWithNames.forEach((step, index) => {
+            history.push({
+                timestamp: now,
+                status: index === 0 ? 'in_transit' : 'pending_transit',
+                officeId: step.destinationOfficeId,
+                officeName: step.destinationOfficeName,
+                recipientRole: step.recipientRole,
+                notes: index === 0 ? `Forwarded for signature.` : `Queued for signature.`,
+            })
         });
-      } else {
+        
+        const firstStep = workflowWithNames[0];
+
+        await addDoc(collection(db, "documents"), {
+            title: values.title,
+            ownerId: user.uid,
+            createdAt: serverTimestamp(),
+            currentStatus: 'in_transit',
+            currentOfficeId: firstStep.destinationOfficeId,
+            history: history,
+        });
+
         toast({
             title: "Document Created",
             description: "Your document has been routed for signature.",
         });
         form.reset();
         setIsAddDocOpen(false);
+        // We can't use revalidatePath in a client component, but the UI will update optimistically.
+      } catch (error) {
+         console.error("Error creating document:", error);
+         toast({
+          variant: "destructive",
+          title: "Creation Failed",
+          description: "Could not create the document. Please try again.",
+        });
       }
     });
   }
@@ -376,5 +402,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

@@ -69,7 +69,7 @@ export default function RootAdminPage() {
         );
         toast({
           title: "Role Updated",
-          description: `User role has been successfully changed to ${role}.`,
+          description: `User role has been successfully changed to ${'\'\'\''}${role}${'\'\'\''}.`,
         });
     } catch (error: any) {
         console.error("Failed to set role:", error);
