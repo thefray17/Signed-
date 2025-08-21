@@ -1,0 +1,24 @@
+{
+  "name": "functions",
+  "scripts": {
+    "build": "npm run-script-if --if-present \"build\" -- \"$@\"",
+    "serve": "npm run-script-if --if-present \"serve\" -- \"$@\"",
+    "shell": "npm run-script-if --if-present \"shell\" -- \"$@\"",
+    "start": "npm run-script-if --if-present \"start\" -- \"$@\"",
+    "deploy": "npm run-script-if --if-present \"deploy\" -- \"$@\"",
+    "logs": "npm run-script-if --if-present \"logs\" -- \"$@\""
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^12.2.0",
+    "firebase-functions": "^5.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.2",
+    "firebase-functions-test": "^3.3.0"
+  },
+  "private": true
+}

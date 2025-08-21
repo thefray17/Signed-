@@ -68,22 +68,24 @@ export default function DashboardPage() {
     defaultValues: { title: "" },
   });
 
-    async function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
+  async function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
     if (!user || !user.office) {
         toast({ variant: 'destructive', title: 'Error', description: 'User or office information is missing.' });
         return;
     }
     try {
-        const creationTime = serverTimestamp();
-        await addDoc(collection(db, "documents"), {
+        // NOTE: We cannot use serverTimestamp() inside an array.
+        // So we create the document first, then update it with the history array.
+        // A better approach for production would be a Cloud Function transaction.
+        const docRef = await addDoc(collection(db, "documents"), {
             title: values.title,
             ownerId: user.uid,
-            createdAt: creationTime,
+            createdAt: serverTimestamp(),
             currentStatus: 'draft',
             currentOfficeId: user.office,
-            history: [
+            history: [ // We use client-side Date here, but serverTimestamp for the main `createdAt`.
                 {
-                    timestamp: creationTime,
+                    timestamp: new Date(),
                     status: 'draft',
                     officeId: user.office,
                     notes: 'Document created.',
@@ -103,7 +105,7 @@ export default function DashboardPage() {
         toast({
             variant: "destructive",
             title: "Creation Failed",
-            description: "Could not create the document. Firestore security rules might be preventing it or the data is invalid.",
+            description: "Could not create the document. Please try again.",
         });
     }
   }

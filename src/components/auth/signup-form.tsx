@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -30,7 +30,8 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
-const ADMIN_EMAILS = ["eballeskaye@gmail.com", "admin@gmail.com"];
+// This is checked by the Cloud Function, but we can use it for client-side hints.
+const ADMIN_EMAIL = "eballeskaye@gmail.com";
 
 export function SignupForm() {
   const router = useRouter();
@@ -60,21 +61,29 @@ export function SignupForm() {
         displayName: values.fullName,
       });
       
-      const isRootAdmin = ADMIN_EMAILS.includes(values.email.toLowerCase());
-      const role = isRootAdmin ? 'admin' : 'user';
-      const status = isRootAdmin ? 'approved' : 'pending';
-      const onboardingComplete = isRootAdmin;
+      const isRootAdmin = values.email.toLowerCase() === ADMIN_EMAIL;
+      
+      // The Cloud Function `onauthcreate` will handle setting custom claims
+      // and creating the user document in Firestore. We can skip creating the
+      // doc here to avoid race conditions and have a single source of truth.
+      
+      // However, for a better UX, we create a basic doc here so the user can
+      // proceed without waiting for the function to run, which can have a slight delay.
+      // The function will overwrite this with authoritative data.
+       if (!isRootAdmin) {
+          await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            displayName: values.fullName,
+            email: values.email,
+            role: 'user',
+            office: null,
+            status: 'pending',
+            onboardingComplete: false,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+       }
 
-      // Create a user document in Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        displayName: values.fullName,
-        email: values.email,
-        role,
-        office: null,
-        status,
-        onboardingComplete,
-      });
 
       toast({
         title: "Account Created",
@@ -82,19 +91,19 @@ export function SignupForm() {
             ? "Welcome, Admin! Your account is ready." 
             : "Your account has been created. Please complete your profile.",
       });
-
-      if (isRootAdmin) {
-        router.push("/admin");
-      } else {
-        router.push("/onboarding");
-      }
+      
+      // The AuthRedirect component will handle routing based on claims and status.
+      // We don't need to manually push the router here. If we do, it might race
+      // with the redirect component and cause a flicker.
 
     } catch (error: any) {
       console.error(error);
       toast({
         variant: "destructive",
         title: "Sign Up Failed",
-        description: error.message || "An unknown error occurred. Please try again.",
+        description: error.code === 'auth/email-already-in-use' 
+            ? 'This email is already registered. Please sign in.'
+            : error.message || "An unknown error occurred. Please try again.",
       });
     } finally {
       setIsLoading(false);

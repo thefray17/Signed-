@@ -19,7 +19,7 @@ export interface Office {
 export type DocumentStatus = 'draft' | 'in_transit' | 'signed' | 'completed' | 'rejected';
 
 export interface DocumentLog {
-  timestamp: Date;
+  timestamp: Date; // Keep as Date for client-side display formatting
   status: DocumentStatus;
   officeId: string;
   officeName: string;
@@ -30,7 +30,7 @@ export interface Document {
   id: string;
   title: string;
   ownerId: string;
-  createdAt: Date;
+  createdAt: any; // Can be Date or ServerTimestamp
   currentStatus: DocumentStatus;
   currentOfficeId: string;
   history: DocumentLog[];

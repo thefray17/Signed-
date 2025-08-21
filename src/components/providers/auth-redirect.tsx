@@ -4,29 +4,46 @@ import { useEffect } from "react";
 import { onIdTokenChanged, getIdTokenResult } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { AppUser } from "@/types";
 
 const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
 
+const publicRoutes = ['/login', '/signup', '/'];
+const authRoutes = ['/admin', '/dashboard', '/pending-approval', '/onboarding'];
+
 export default function AuthRedirect() {
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (user) => {
-      if (!user) return;
-
+      if (!user) {
+        // If user is not logged in and is trying to access a protected route,
+        // redirect to login.
+        if (!publicRoutes.includes(pathname)) {
+            router.replace('/login');
+        }
+        return;
+      }
+      
       try {
         const tokenResult = await getIdTokenResult(user, true); // Force refresh
         const claims = tokenResult.claims;
         const role = (claims.role as string) || "";
 
-        if (user.email?.toLowerCase() === ROOT_ADMIN_EMAIL || role === "admin" || role === "co-admin") {
-          // Check if already on an admin route
-          if (!window.location.pathname.startsWith('/admin')) {
+        // Immediately redirect admins and co-admins based on claims
+        if (user.email?.toLowerCase() === ROOT_ADMIN_EMAIL || role === "admin") {
+          if (!pathname.startsWith('/admin')) {
             router.replace("/admin");
           }
           return;
+        }
+        if (role === "co-admin") {
+             if (!pathname.startsWith('/admin')) {
+                router.replace("/admin");
+            }
+            return;
         }
 
         // Fallback to Firestore for non-admin users
@@ -37,41 +54,42 @@ export default function AuthRedirect() {
           const userData = userDoc.data() as AppUser;
           
           if (userData.status === 'approved') {
-             if (!window.location.pathname.startsWith('/dashboard')) {
+             if (!pathname.startsWith('/dashboard')) {
                 router.replace('/dashboard');
              }
           } else if (userData.status === 'pending') {
-            if (window.location.pathname !== '/pending-approval') {
+            if (pathname !== '/pending-approval') {
                 router.replace('/pending-approval');
             }
           } else if (userData.status === 'rejected') {
-             if (window.location.pathname !== '/login') {
+             if (pathname !== '/login') {
                 await auth.signOut();
-                // We don't need a toast here as the login page will handle it.
                 router.replace('/login');
              }
           } else if (!userData.onboardingComplete) {
-            if (window.location.pathname !== '/onboarding') {
+            if (pathname !== '/onboarding') {
                 router.replace('/onboarding');
             }
           }
         } else {
-             // If no user doc, send to onboarding
-            if (window.location.pathname !== '/onboarding') {
+             // If no user doc, something is wrong, send to onboarding as a failsafe
+            if (pathname !== '/onboarding') {
                router.replace('/onboarding');
             }
         }
 
       } catch (error) {
-        console.error("Error getting user token or data:", error);
+        console.error("Error during auth redirection:", error);
         // If there's an error, sign out and redirect to login
-        await auth.signOut();
-        router.replace('/login');
+        if (pathname !== '/login') {
+            await auth.signOut();
+            router.replace('/login');
+        }
       }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, pathname]);
 
   return null;
 }

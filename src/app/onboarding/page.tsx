@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { doc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { doc, updateDoc, collection, getDocs, serverTimestamp } from "firebase/firestore";
 import { Loader2, Send } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -40,6 +40,7 @@ export default function OnboardingPage() {
   });
 
   useEffect(() => {
+    // AuthRedirect handles redirects, but this is a good safeguard.
     if (!authLoading && !user) {
       router.push('/login');
     }
@@ -51,15 +52,8 @@ export default function OnboardingPage() {
         const officesCollection = collection(db, "offices");
         const officeSnapshot = await getDocs(officesCollection);
         const officesList = officeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Office));
-        if (officesList.length === 0) {
-            setOffices([
-                {id: 'mayor', name: 'Mayors Office'},
-                {id: 'hr', name: 'Human Resources'},
-                {id: 'accounting', name: 'Accounting Office'},
-                {id: 'it', name: 'IT Department'},
-            ]);
-        } else {
-             setOffices(officesList);
+        if (officesList.length > 0) {
+            setOffices(officesList);
         }
       } catch (error) {
         console.error("Error fetching offices: ", error);
@@ -91,7 +85,8 @@ export default function OnboardingPage() {
         office: values.office,
         role: values.role,
         onboardingComplete: true,
-        status: 'pending',
+        status: 'pending', // Status is now standardized
+        updatedAt: serverTimestamp(),
       });
 
       toast({
@@ -99,7 +94,7 @@ export default function OnboardingPage() {
         description: 'Your information has been sent for approval.',
       });
 
-      router.push('/pending-approval');
+      // The AuthRedirect component will handle routing to /pending-approval
     } catch (error) {
       console.error(error);
       toast({
