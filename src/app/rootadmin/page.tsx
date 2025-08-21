@@ -23,11 +23,14 @@ export default function RootAdminPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  
+  const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
+  const email = (authUser?.email ?? "").toLowerCase();
+  const allow = !!authUser && (authUser.isRoot || email === ROOT_ADMIN_EMAIL);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!authUser || !authUser.isRoot) {
-        // This check will now work correctly because useAuth provides the isRoot status.
+    if (!allow) {
         setLoading(false);
         return;
     }
@@ -58,7 +61,7 @@ export default function RootAdminPage() {
     
     fetchUsers();
 
-  }, [authUser, authLoading, toast]);
+  }, [authUser, authLoading, toast, allow]);
 
   async function setRole(uid: string, role: "user" | "coadmin" | "admin") {
     try {
@@ -94,7 +97,7 @@ export default function RootAdminPage() {
      )
   }
 
-  if (!authUser?.isRoot) {
+  if (!allow) {
     return (
       <Card>
         <CardHeader><CardTitle>403 — Root Admin Only</CardTitle></CardHeader>

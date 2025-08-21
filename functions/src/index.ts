@@ -17,6 +17,7 @@ export const onAuthCreate = functions.auth.user().onCreate(async (user) => {
     email: user.email ?? "",
     role: "user",
     status: "pending",
+    onboardingComplete: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -24,7 +25,7 @@ export const onAuthCreate = functions.auth.user().onCreate(async (user) => {
   if ((user.email || "").toLowerCase() === ROOT) {
     await auth.setCustomUserClaims(user.uid, { role: "admin", isRoot: true });
     await db.doc(`users/${user.uid}`).set(
-      { ...base, role: "admin", status: "approved", isRoot: true, updatedAt: Date.now() },
+      { ...base, role: "admin", status: "approved", isRoot: true, onboardingComplete: true, updatedAt: Date.now() },
       { merge: true }
     );
   } else {
@@ -54,12 +55,30 @@ export const assignUserRole = functions.https.onCall(async (data, context) => {
 
   if (role === "admin" && !isRootCaller)
     throw new functions.https.HttpsError("permission-denied", "Only root can assign Admin.");
-  if (role === "coadmin" && !(callerRole === "admin" || isRootCaller))
+  if (role === "coadmin" && !isRootCaller && callerRole !== 'admin')
     throw new functions.https.HttpsError("permission-denied", "Only Admin can assign Co-admin.");
 
   await auth.setCustomUserClaims(targetUserId, { role, isRoot: false }); // never grant isRoot here
   await getFirestore().doc(`users/${targetUserId}`).set(
     { role, isRoot: false, updatedAt: Date.now() },
+    { merge: true }
+  );
+  return { ok: true };
+});
+
+export const ensureRootClaims = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Sign in");
+  }
+  const email = String(context.auth.token.email || "").toLowerCase();
+  if (email !== ROOT) {
+    throw new functions.https.HttpsError("permission-denied", "Root only");
+  }
+
+  const uid = context.auth.uid;
+  await getAuth().setCustomUserClaims(uid, { role: "admin", isRoot: true });
+  await getFirestore().doc(`users/${uid}`).set(
+    { role: "admin", isRoot: true, status: "approved", updatedAt: Date.now() },
     { merge: true }
   );
   return { ok: true };

@@ -17,6 +17,8 @@ export interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<AppUser | null>(null);
@@ -26,36 +28,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onIdTokenChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
-        // Fetch extended user profile from Firestore and custom claims
-        const userDocRef = doc(db, 'users', fbUser.uid);
-        const [userDoc, tokenResult] = await Promise.all([
-            getDoc(userDocRef),
-            getIdTokenResult(fbUser, true), // Force refresh to get latest claims
-        ]);
-        
-        const claims = tokenResult.claims;
+        const token = await getIdTokenResult(fbUser, true);
+        const claims = token.claims as any;
 
-        if (userDoc.exists()) {
-          const firestoreData = userDoc.data();
-          setUser({ 
-              uid: fbUser.uid, 
-              ...firestoreData,
-              isRoot: !!claims.isRoot, // Set isRoot from claims
-              role: claims.role || firestoreData.role, // Prioritize claim role
-          } as AppUser);
-        } else {
-            // This might be a new user who hasn't completed onboarding
-            setUser({
-                uid: fbUser.uid,
-                email: fbUser.email,
-                displayName: fbUser.displayName,
-                role: 'user',
-                office: null,
-                status: 'pending',
-                onboardingComplete: false,
-                isRoot: !!claims.isRoot,
-            });
-        }
+        const email = (fbUser.email ?? "").toLowerCase();
+        const isRoot = !!claims.isRoot || email === ROOT_ADMIN_EMAIL;
+
+        const userDoc = await getDoc(doc(db, "users", fbUser.uid));
+        const firestoreData = userDoc.exists() ? (userDoc.data() as any) : {};
+
+        setUser({
+          uid: fbUser.uid,
+          email: fbUser.email,
+          displayName: fbUser.displayName,
+          role: isRoot ? "admin" : (claims.role as string) || firestoreData.role || "user",
+          isRoot,
+          office: firestoreData.office ?? null,
+          officeName: firestoreData.officeName,
+          status: firestoreData.status ?? "pending",
+          onboardingComplete: firestoreData.onboardingComplete ?? false,
+        } as AppUser);
       } else {
         setUser(null);
       }
