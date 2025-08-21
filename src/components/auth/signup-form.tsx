@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc, getDocs, collection, query, limit } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -30,6 +30,8 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
+const ADMIN_EMAIL = "eballeskaye@gmail.com";
+
 export function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
@@ -47,12 +49,6 @@ export function SignupForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // Check if any users exist to determine if this is the first signup
-      const usersCollectionRef = collection(db, "users");
-      const q = query(usersCollectionRef, limit(1));
-      const querySnapshot = await getDocs(q);
-      const isFirstUser = querySnapshot.empty;
-
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         values.email,
@@ -64,27 +60,30 @@ export function SignupForm() {
         displayName: values.fullName,
       });
       
-      const isAdmin = isFirstUser;
+      const isRootAdmin = values.email.toLowerCase() === ADMIN_EMAIL;
+      const role = isRootAdmin ? 'admin' : 'user';
+      const status = isRootAdmin ? 'approved' : 'pending_approval';
+      const onboardingComplete = isRootAdmin;
 
       // Create a user document in Firestore
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         displayName: values.fullName,
         email: values.email,
-        role: isAdmin ? 'admin' : 'user',
+        role,
         office: null,
-        status: isAdmin ? 'approved' : 'pending_approval',
-        onboardingComplete: isAdmin ? true : false,
+        status,
+        onboardingComplete,
       });
 
       toast({
         title: "Account Created",
-        description: isAdmin 
+        description: isRootAdmin 
             ? "Welcome, Admin! Your account is ready." 
             : "Your account has been created. Please complete your profile.",
       });
 
-      if (isAdmin) {
+      if (isRootAdmin) {
         router.push("/admin");
       } else {
         router.push("/onboarding");
