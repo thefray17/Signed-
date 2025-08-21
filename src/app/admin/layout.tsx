@@ -1,8 +1,9 @@
+
 "use client"
 
 import React from 'react';
 import { useRouter } from "next/navigation";
-import { FileSignature, Home, UserCheck, Building, Users, LogOut } from "lucide-react";
+import { FileSignature, UserCheck, Building, Users, LogOut } from "lucide-react";
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
@@ -71,31 +72,33 @@ export default function AdminLayout({
 
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen w-full flex-col bg-muted/40">
-                <Sidebar>
-                    <SidebarHeader>
-                        <div className="flex items-center gap-2 p-2">
-                            <FileSignature className="h-6 w-6 text-primary"/>
-                            <span className="text-lg font-semibold">Signed! Admin</span>
-                        </div>
-                    </SidebarHeader>
-                    <SidebarContent>
-                        <SidebarNav navItems={navItems} userRole={user.role} />
-                    </SidebarContent>
-                     <SidebarFooter>
-                        <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleSignOut}>
-                            <LogOut className="h-4 w-4" />
-                            <span>Logout</span>
-                        </Button>
-                    </SidebarFooter>
-                </Sidebar>
-                <div className="flex flex-col sm:py-4 sm:pl-14">
-                    <Header title="Admin Dashboard"/>
-                     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-                        {children}
-                    </main>
+            <Sidebar>
+                <SidebarHeader>
+                    <div className="flex items-center gap-2 p-2">
+                        <FileSignature className="h-6 w-6 text-primary"/>
+                        <span className="text-lg font-semibold">Signed! Admin</span>
+                    </div>
+                </SidebarHeader>
+                <SidebarContent>
+                    <SidebarNav navItems={navItems} userRole={user.role} />
+                </SidebarContent>
+                 <SidebarFooter>
+                    <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleSignOut}>
+                        <LogOut className="h-4 w-4" />
+                        <span>Logout</span>
+                    </Button>
+                </SidebarFooter>
+            </Sidebar>
+            <SidebarInset>
+                <div className="flex flex-col min-h-screen w-full bg-muted/40">
+                    <div className="flex flex-col sm:py-4 sm:pl-4">
+                        <Header title="Admin Dashboard"/>
+                         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+                            {children}
+                        </main>
+                    </div>
                 </div>
-            </div>
+            </SidebarInset>
         </SidebarProvider>
     );
 }
