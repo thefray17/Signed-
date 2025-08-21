@@ -11,18 +11,6 @@ export default function Home() {
           <span className="sr-only">Signed!</span>
         </Link>
         <h1 className="ml-4 text-2xl font-bold tracking-tight text-primary">Signed!</h1>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link
-            href="/login"
-            className="text-sm font-medium hover:underline underline-offset-4"
-            prefetch={false}
-          >
-            Login
-          </Link>
-          <Button asChild>
-            <Link href="/signup" prefetch={false}>Get Started</Link>
-          </Button>
-        </nav>
       </header>
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-background">

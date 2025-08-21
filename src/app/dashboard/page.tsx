@@ -172,7 +172,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl">45</CardTitle>
             <CardDescription>Documents Completed</CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent>
              <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-green-500" />
@@ -184,7 +184,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl">3</CardTitle>
             <CardDescription>Documents Rejected</CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <XCircle className="h-3 w-3 text-red-500" />
