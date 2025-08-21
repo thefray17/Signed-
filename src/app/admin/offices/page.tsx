@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Office } from "@/types";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
-import { PlusCircle, MoreHorizontal } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -28,7 +31,24 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -36,49 +56,82 @@ interface OfficeWithCount extends Office {
     employeeCount: number;
 }
 
+const addOfficeSchema = z.object({
+  name: z.string().min(3, "Office name must be at least 3 characters."),
+});
+
 export default function OfficesPage() {
     const [offices, setOffices] = useState<OfficeWithCount[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isAddOfficeOpen, setIsAddOfficeOpen] = useState(false);
     const { toast } = useToast();
 
+    const form = useForm<z.infer<typeof addOfficeSchema>>({
+      resolver: zodResolver(addOfficeSchema),
+      defaultValues: { name: "" },
+    });
+    
+    const fetchOffices = async () => {
+        setLoading(true);
+        try {
+            const officesCollection = collection(db, "offices");
+            const officeSnapshot = await getDocs(officesCollection);
+            const officesList = officeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Office));
+            
+            const usersCollection = collection(db, "users");
+            const usersSnapshot = await getDocs(usersCollection);
+            const userCountByOffice = usersSnapshot.docs.reduce((acc, userDoc) => {
+                const officeId = userDoc.data().office;
+                if(officeId) {
+                    acc[officeId] = (acc[officeId] || 0) + 1;
+                }
+                return acc;
+            }, {} as Record<string, number>);
+
+            const officesWithCount = officesList.map(office => ({
+                ...office,
+                employeeCount: userCountByOffice[office.id] || 0
+            }));
+
+            setOffices(officesWithCount);
+
+        } catch (error) {
+             console.error("Error fetching offices: ", error);
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not load offices.",
+             });
+        } finally {
+            setLoading(false);
+        }
+    };
+    
     useEffect(() => {
-        const fetchOffices = async () => {
-            setLoading(true);
-            try {
-                const officesCollection = collection(db, "offices");
-                const officeSnapshot = await getDocs(officesCollection);
-                const officesList = officeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Office));
-                
-                const usersCollection = collection(db, "users");
-                const usersSnapshot = await getDocs(usersCollection);
-                const userCountByOffice = usersSnapshot.docs.reduce((acc, userDoc) => {
-                    const officeId = userDoc.data().office;
-                    if(officeId) {
-                        acc[officeId] = (acc[officeId] || 0) + 1;
-                    }
-                    return acc;
-                }, {} as Record<string, number>);
-
-                const officesWithCount = officesList.map(office => ({
-                    ...office,
-                    employeeCount: userCountByOffice[office.id] || 0
-                }));
-
-                setOffices(officesWithCount);
-
-            } catch (error) {
-                 console.error("Error fetching offices: ", error);
-                 toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Could not load offices.",
-                 });
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchOffices();
     }, [toast]);
+
+    async function onAddOfficeSubmit(values: z.infer<typeof addOfficeSchema>) {
+        try {
+            await addDoc(collection(db, "offices"), {
+                name: values.name,
+            });
+            toast({
+                title: "Office Added",
+                description: `The office "${values.name}" has been created.`,
+            });
+            form.reset();
+            setIsAddOfficeOpen(false);
+            fetchOffices(); // Refresh the list
+        } catch (error) {
+            console.error("Error adding office:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not add the office. Please try again.",
+            });
+        }
+    }
 
   return (
     <Card>
@@ -90,12 +143,46 @@ export default function OfficesPage() {
                   Add, edit, or remove offices and departments.
                 </CardDescription>
             </div>
-            <Button size="sm" className="gap-1">
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Office
-                </span>
-            </Button>
+             <Dialog open={isAddOfficeOpen} onOpenChange={setIsAddOfficeOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm" className="gap-1">
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                            Add Office
+                        </span>
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add a New Office</DialogTitle>
+                        <DialogDescription>
+                            Enter the name of the new office or department.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onAddOfficeSubmit)} className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Office Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Mayor's Office" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : "Add Office"}
+                            </Button>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </div>
       </CardHeader>
       <CardContent>

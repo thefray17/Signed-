@@ -1,5 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import { PlusCircle, ArrowUpRight, FileText, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { PlusCircle, ArrowUpRight, FileText, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,6 +24,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const recentDocuments = [
   { id: "DOC-001", title: "Budget Proposal 2024", status: "In Transit", office: "Mayor's Office", lastUpdate: "2 hours ago" },
@@ -27,7 +54,60 @@ const recentDocuments = [
   { id: "DOC-005", title: "Annual Financial Report", status: "Draft", office: "My Drafts", lastUpdate: "1 week ago" },
 ];
 
+const addDocumentSchema = z.object({
+    title: z.string().min(5, "Title must be at least 5 characters long."),
+});
+
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isAddDocOpen, setIsAddDocOpen] = useState(false);
+
+  const form = useForm<z.infer<typeof addDocumentSchema>>({
+    resolver: zodResolver(addDocumentSchema),
+    defaultValues: { title: "" },
+  });
+
+  async function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
+    if (!user || !user.office) {
+        toast({ variant: 'destructive', title: 'Error', description: 'User or office information is missing.' });
+        return;
+    }
+    try {
+        await addDoc(collection(db, "documents"), {
+            title: values.title,
+            ownerId: user.uid,
+            createdAt: serverTimestamp(),
+            currentStatus: 'draft',
+            currentOfficeId: user.office,
+            history: [
+                {
+                    timestamp: serverTimestamp(),
+                    status: 'draft',
+                    officeId: user.office,
+                    notes: 'Document created.',
+                }
+            ]
+        });
+
+        toast({
+            title: "Document Created",
+            description: "Your document has been saved as a draft.",
+        });
+        form.reset();
+        setIsAddDocOpen(false);
+        // Here you would typically re-fetch the documents list
+    } catch (error) {
+        console.error("Error creating document:", error);
+        toast({
+            variant: "destructive",
+            title: "Creation Failed",
+            description: "Could not create the document. Please try again.",
+        });
+    }
+  }
+
+
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
@@ -37,10 +117,44 @@ export default function DashboardPage() {
             <CardDescription>Start a new document routing process.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button size="sm" className="w-full">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Create Document
-            </Button>
+            <Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm" className="w-full">
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Create Document
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Create a New Document</DialogTitle>
+                        <DialogDescription>
+                            Enter a title for your new document to start. It will be saved as a draft.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onAddDocumentSubmit)} className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="title"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Document Title</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Annual Budget Proposal 2024" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : "Create Draft"}
+                            </Button>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
         <Card>
@@ -59,7 +173,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl">45</CardTitle>
             <CardDescription>Documents Completed</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
              <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-green-500" />
@@ -71,7 +185,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl">3</CardTitle>
             <CardDescription>Documents Rejected</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <XCircle className="h-3 w-3 text-red-500" />

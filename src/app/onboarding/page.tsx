@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import type { Office } from "@/types";
@@ -20,15 +21,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const onboardingSchema = z.object({
   office: z.string({ required_error: "Please select an office." }),
-  role: z.string({ required_error: "Please select a role." }),
+  role: z.string().min(2, { message: "Role must be at least 2 characters." }),
 });
-
-// Mock roles data
-const roles = [
-    { id: 'clerk', name: 'Clerk' },
-    { id: 'officer', name: 'Officer' },
-    { id: 'department_head', name: 'Department Head' },
-];
 
 export default function OnboardingPage() {
   const { user, loading: authLoading } = useAuth();
@@ -40,6 +34,9 @@ export default function OnboardingPage() {
 
   const form = useForm<z.infer<typeof onboardingSchema>>({
     resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      role: "",
+    }
   });
 
   useEffect(() => {
@@ -54,7 +51,6 @@ export default function OnboardingPage() {
         const officesCollection = collection(db, "offices");
         const officeSnapshot = await getDocs(officesCollection);
         const officesList = officeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Office));
-        // Mock data if Firestore is empty
         if (officesList.length === 0) {
             setOffices([
                 {id: 'mayor', name: 'Mayors Office'},
@@ -137,7 +133,7 @@ export default function OnboardingPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Complete Your Profile</CardTitle>
           <CardDescription>
-            Please select your office and role to continue. This information will be verified by an administrator.
+            Please select your office and enter your role to continue. This information will be verified by an administrator.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,20 +169,9 @@ export default function OnboardingPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Your Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roles.map((role) => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                     <FormControl>
+                        <Input placeholder="e.g., Clerk, Officer, Dept. Head" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
