@@ -14,65 +14,51 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 type UserRow = { id: string; email: string; role?: string; status?: string; isRoot?: boolean; createdAt?: any };
 
 export default function RootAdminPage() {
-  const [isRoot, setIsRoot] = useState<boolean>(false);
+  const { user: authUser, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    const checkAuthAndFetchData = async () => {
-      const u = auth.currentUser;
-      if (!u) {
-          setLoading(false);
-          return;
-      };
-
-      try {
-        const tok = await getIdTokenResult(u, true);
-        const claims = tok.claims as any;
-        const email = (u.email || "").toLowerCase();
-        const root = !!claims.isRoot || email === "eballeskaye@gmail.com";
-        setIsRoot(root);
-
-        if (root) {
-          const snap = await getDocs(
-            query(collection(db, "users"), orderBy("createdAt", "desc"), limit(100))
-          );
-          setUsers(
-            snap.docs.map((d) => {
-              const x = d.data() as any;
-              return { id: d.id, email: x.email, role: x.role, status: x.status, isRoot: x.isRoot, createdAt: x.createdAt };
-            })
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not load user data.",
-        });
-      } finally {
+    if (authLoading) return;
+    if (!authUser || !authUser.isRoot) {
         setLoading(false);
-      }
+        return;
+    }
+
+    const fetchUsers = async () => {
+        setLoading(true);
+        try {
+            const snap = await getDocs(
+                query(collection(db, "users"), orderBy("createdAt", "desc"), limit(100))
+            );
+            setUsers(
+                snap.docs.map((d) => {
+                    const x = d.data() as any;
+                    return { id: d.id, email: x.email, role: x.role, status: x.status, isRoot: x.isRoot, createdAt: x.createdAt };
+                })
+            );
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Could not load user data.",
+            });
+        } finally {
+            setLoading(false);
+        }
     };
     
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      if (user) {
-        checkAuthAndFetchData();
-      } else {
-        setLoading(false); // No user, stop loading
-        router.push("/login");
-      }
-    });
+    fetchUsers();
 
-    return () => unsubscribe();
-  }, [toast, router]);
+  }, [authUser, authLoading, toast]);
 
   async function setRole(uid: string, role: "user" | "coadmin" | "admin") {
     try {
@@ -95,44 +81,33 @@ export default function RootAdminPage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || loading) {
      return (
-        <div className="p-6">
-            <Card>
-              <CardHeader><CardTitle>Loading Root Dashboard...</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </CardContent>
-            </Card>
-        </div>
+        <Card>
+          <CardHeader><CardTitle>Loading User Management...</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </CardContent>
+        </Card>
      )
   }
 
-  if (!isRoot) {
+  if (!authUser?.isRoot) {
     return (
-      <div className="p-6">
-        <Card>
-          <CardHeader><CardTitle>403 — Root Admin Only</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">You don’t have access to this page.</p>
-            <div className="mt-4"><Link href="/dashboard"><Button>Go to Dashboard</Button></Link></div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader><CardTitle>403 — Root Admin Only</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">You don’t have access to this page.</p>
+          <div className="mt-4"><Link href="/dashboard"><Button>Go to Dashboard</Button></Link></div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">User Management</h1>
-        <div className="text-sm text-muted-foreground">
-          Full control (including Admin promotions). Co-admins cannot access this page.
-        </div>
-      </div>
-
       <Card>
         <CardHeader><CardTitle>Users (latest 100)</CardTitle></CardHeader>
         <CardContent className="space-y-2">

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase-client';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
+import { Header } from '@/components/layout/header';
 
 function RootAdminMobileSidebar({ onSignOut }: { onSignOut: () => void }) {
     const { openMobile, setOpenMobile } = useSidebar();
@@ -29,7 +30,16 @@ function RootAdminMobileSidebar({ onSignOut }: { onSignOut: () => void }) {
                     </div>
                 </SheetHeader>
                 <SidebarContent>
-                    {/* Add any mobile nav items here if needed */}
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton asChild tooltip="User Management" isActive>
+                                <Link href="/rootadmin">
+                                    <ShieldAlert/>
+                                    <span>User Management</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
                 </SidebarContent>
                  <SidebarFooter>
                     <Button variant="ghost" className="w-full justify-start gap-2" onClick={onSignOut}>
@@ -89,7 +99,7 @@ export default function RootAdminLayout({
                 <SidebarContent>
                      <SidebarMenu>
                         <SidebarMenuItem>
-                            <SidebarMenuButton asChild tooltip="Root Dashboard" isActive>
+                            <SidebarMenuButton asChild tooltip="User Management" isActive>
                                 <Link href="/rootadmin">
                                     <ShieldAlert/>
                                     <span>User Management</span>
@@ -107,9 +117,12 @@ export default function RootAdminLayout({
             </Sidebar>
             <SidebarInset>
                 <div className="flex flex-col min-h-screen w-full bg-muted/40">
-                     <main className="flex-1 p-4 sm:px-6 sm:py-6 md:gap-8">
-                        {children}
-                    </main>
+                    <div className="flex flex-col sm:py-4 sm:pl-4">
+                        <Header title="Root Dashboard"/>
+                         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+                            {children}
+                        </main>
+                    </div>
                 </div>
             </SidebarInset>
         </SidebarProvider>
