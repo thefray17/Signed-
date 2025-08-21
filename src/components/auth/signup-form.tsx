@@ -30,7 +30,7 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
-const ADMIN_EMAIL = "eballeskaye@gmail.com";
+const ADMIN_EMAILS = ["eballeskaye@gmail.com", "admin@gmail.com"];
 
 export function SignupForm() {
   const router = useRouter();
@@ -60,7 +60,7 @@ export function SignupForm() {
         displayName: values.fullName,
       });
       
-      const isRootAdmin = values.email.toLowerCase() === ADMIN_EMAIL;
+      const isRootAdmin = ADMIN_EMAILS.includes(values.email.toLowerCase());
       const role = isRootAdmin ? 'admin' : 'user';
       const status = isRootAdmin ? 'approved' : 'pending_approval';
       const onboardingComplete = isRootAdmin;
