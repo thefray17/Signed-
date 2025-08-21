@@ -74,16 +74,15 @@ export default function DashboardPage() {
         return;
     }
     try {
-        const creationTime = new Date();
         await addDoc(collection(db, "documents"), {
             title: values.title,
             ownerId: user.uid,
-            createdAt: creationTime,
+            createdAt: serverTimestamp(),
             currentStatus: 'draft',
             currentOfficeId: user.office,
             history: [
                 {
-                    timestamp: creationTime,
+                    timestamp: serverTimestamp(),
                     status: 'draft',
                     officeId: user.office,
                     notes: 'Document created.',
@@ -103,7 +102,7 @@ export default function DashboardPage() {
         toast({
             variant: "destructive",
             title: "Creation Failed",
-            description: "Could not create the document. Please try again.",
+            description: "Could not create the document. Firestore security rules might be preventing it or the data is invalid.",
         });
     }
   }
@@ -173,7 +172,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl">45</CardTitle>
             <CardDescription>Documents Completed</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
              <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-green-500" />
@@ -185,7 +184,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl">3</CardTitle>
             <CardDescription>Documents Rejected</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <XCircle className="h-3 w-3 text-red-500" />

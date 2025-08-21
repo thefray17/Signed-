@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'co-admin' | 'admin';
-export type UserStatus = 'pending_approval' | 'approved' | 'rejected';
+export type UserStatus = 'pending' | 'approved' | 'rejected';
 
 export interface AppUser {
   uid: string;

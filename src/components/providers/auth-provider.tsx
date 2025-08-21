@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 displayName: fbUser.displayName,
                 role: 'user',
                 office: null,
-                status: 'pending_approval',
+                status: 'pending',
                 onboardingComplete: false
             });
         }

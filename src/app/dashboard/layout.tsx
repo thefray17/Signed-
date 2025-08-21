@@ -37,7 +37,7 @@ export default function DashboardLayout({
 
             if (!user.onboardingComplete) {
                 router.push('/onboarding');
-            } else if (user.status === 'pending_approval') {
+            } else if (user.status === 'pending') {
                 router.push('/pending-approval');
             } else if (user.status === 'rejected') {
                 signOut(auth);

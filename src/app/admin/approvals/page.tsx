@@ -130,7 +130,7 @@ export default function ApprovalsPage() {
         </Table>
     );
 
-  const pendingUsers = users.filter(u => u.status === 'pending_approval');
+  const pendingUsers = users.filter(u => u.status === 'pending');
   const approvedUsers = users.filter(u => u.status === 'approved');
   const rejectedUsers = users.filter(u => u.status === 'rejected');
 

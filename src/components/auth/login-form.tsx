@@ -63,7 +63,7 @@ export function LoginForm() {
             router.push('/admin');
         } else if (!userData.onboardingComplete) {
             router.push('/onboarding');
-        } else if (userData.status === 'pending_approval') {
+        } else if (userData.status === 'pending') {
             router.push('/pending-approval');
         } else if (userData.status === 'rejected') {
             await auth.signOut();

@@ -91,7 +91,7 @@ export default function OnboardingPage() {
         office: values.office,
         role: values.role,
         onboardingComplete: true,
-        status: 'pending_approval',
+        status: 'pending',
       });
 
       toast({

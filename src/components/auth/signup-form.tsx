@@ -62,7 +62,7 @@ export function SignupForm() {
       
       const isRootAdmin = ADMIN_EMAILS.includes(values.email.toLowerCase());
       const role = isRootAdmin ? 'admin' : 'user';
-      const status = isRootAdmin ? 'approved' : 'pending_approval';
+      const status = isRootAdmin ? 'approved' : 'pending';
       const onboardingComplete = isRootAdmin;
 
       // Create a user document in Firestore
