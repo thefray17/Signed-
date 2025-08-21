@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/components/providers/auth-provider';
+import AuthRedirect from '@/components/providers/auth-redirect';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
@@ -22,6 +23,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
+          <AuthRedirect />
           {children}
           <Toaster />
         </AuthProvider>

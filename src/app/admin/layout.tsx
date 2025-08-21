@@ -29,12 +29,6 @@ export default function AdminLayout({
     const { user, loading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-
-    React.useEffect(() => {
-        if (!loading && (!user || (user.role !== 'admin' && user.role !== 'co-admin'))) {
-            router.push('/login');
-        }
-    }, [user, loading, router]);
     
     const handleSignOut = async () => {
         try {

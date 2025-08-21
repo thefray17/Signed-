@@ -7,7 +7,6 @@ import * as z from "zod";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { doc, getDoc } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,9 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { Loader2 } from "lucide-react";
-import type { AppUser } from "@/types";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -46,47 +44,19 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-      
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      // The AuthRedirect component will handle routing.
       toast({
         title: "Login Successful",
         description: `Welcome back!`,
       });
+      // Intentionally not pushing router here, AuthRedirect handles it.
       
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as AppUser;
-        if (userData.role === 'admin' || userData.role === 'co-admin') {
-            router.push('/admin');
-        } else if (!userData.onboardingComplete) {
-            router.push('/onboarding');
-        } else if (userData.status === 'pending') {
-            router.push('/pending-approval');
-        } else if (userData.status === 'rejected') {
-            await auth.signOut();
-            toast({
-                variant: 'destructive',
-                title: 'Account Rejected',
-                description: 'Your account registration was rejected. Please contact an administrator.',
-            });
-            setIsLoading(false);
-            router.push('/login');
-        } else {
-            router.push('/dashboard');
-        }
-      } else {
-        // This case should ideally not be reached if signup creates a user doc
-        // But as a fallback, send to onboarding
-        router.push('/onboarding');
-      }
-
     } catch (error: any) {
       console.error(error);
       let errorMessage = "An unknown error occurred. Please try again.";
-      if (error.code === 'auth/invalid-credential') {
+      // Firebase v9+ uses auth/invalid-credential for most login errors
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = 'Invalid email or password. Please try again.';
       } else if (error.message) {
         errorMessage = error.message;
@@ -96,7 +66,8 @@ export function LoginForm() {
         title: "Login Failed",
         description: errorMessage,
       });
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   }
 

@@ -1,8 +1,9 @@
+
 "use client"
 
 import React from 'react';
 import { useRouter } from "next/navigation";
-import { FileSignature, Home, FileText, Bell, LogOut, FileClock } from "lucide-react";
+import { FileSignature, Home, FileText, Bell, LogOut } from "lucide-react";
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,7 +13,6 @@ import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/layout/header';
-import { Card } from '@/components/ui/card';
 
 export default function DashboardLayout({
   children,
@@ -22,34 +22,6 @@ export default function DashboardLayout({
     const { user, loading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-
-    React.useEffect(() => {
-        if (!loading) {
-            if (!user) {
-                router.push('/login');
-                return;
-            }
-
-            if (user.role === 'admin' || user.role === 'co-admin') {
-                router.push('/admin');
-                return;
-            }
-
-            if (!user.onboardingComplete) {
-                router.push('/onboarding');
-            } else if (user.status === 'pending') {
-                router.push('/pending-approval');
-            } else if (user.status === 'rejected') {
-                signOut(auth);
-                toast({
-                    variant: 'destructive',
-                    title: 'Access Denied',
-                    description: 'Your account registration was rejected.'
-                });
-                router.push('/login');
-            }
-        }
-    }, [user, loading, router, toast]);
 
     const handleSignOut = async () => {
         try {
@@ -68,7 +40,7 @@ export default function DashboardLayout({
         }
     };
 
-    if (loading || !user || user.role === 'admin' || user.role === 'co-admin') {
+    if (loading || !user) {
         return (
             <div className="flex h-screen w-full">
                 <div className="hidden md:block w-64 border-r p-4 space-y-4">
