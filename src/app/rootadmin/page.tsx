@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getIdTokenResult } from "firebase/auth";
 import { httpsCallable, getFunctions } from "firebase/functions";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 type UserRow = { id: string; email: string; role?: string; status?: string; isRoot?: boolean; createdAt?: any };
 
@@ -19,6 +21,8 @@ export default function RootAdminPage() {
   const [isRoot, setIsRoot] = useState<boolean>(false);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -48,22 +52,27 @@ export default function RootAdminPage() {
         }
       } catch (error) {
         console.error("Error fetching data:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not load user data.",
+        });
       } finally {
         setLoading(false);
       }
     };
     
-    // onAuthStateChanged ensures we run this after user is initialized
     const unsubscribe = auth.onAuthStateChanged(user => {
       if (user) {
         checkAuthAndFetchData();
       } else {
-        setLoading(false);
+        setLoading(false); // No user, stop loading
+        router.push("/login");
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [toast, router]);
 
   async function setRole(uid: string, role: "user" | "coadmin" | "admin") {
     try {
@@ -72,9 +81,17 @@ export default function RootAdminPage() {
         setUsers((prev) =>
           prev.map((u) => (u.id === uid ? { ...u, role, isRoot: false } : u))
         );
-    } catch (error) {
+        toast({
+          title: "Role Updated",
+          description: `User role has been successfully changed to ${role}.`,
+        });
+    } catch (error: any) {
         console.error("Failed to set role:", error);
-        // Optionally show a toast message to the user
+        toast({
+          variant: "destructive",
+          title: "Error Updating Role",
+          description: error.message || "An unknown error occurred.",
+        });
     }
   }
 
@@ -82,8 +99,12 @@ export default function RootAdminPage() {
      return (
         <div className="p-6">
             <Card>
-              <CardHeader><CardTitle>Loading...</CardTitle></CardHeader>
-              <CardContent><p className="text-sm text-muted-foreground">Verifying permissions and fetching data...</p></CardContent>
+              <CardHeader><CardTitle>Loading Root Dashboard...</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </CardContent>
             </Card>
         </div>
      )
@@ -96,7 +117,7 @@ export default function RootAdminPage() {
           <CardHeader><CardTitle>403 — Root Admin Only</CardTitle></CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">You don’t have access to this page.</p>
-            <div className="mt-4"><Link href="/admin"><Button>Go to Admin</Button></Link></div>
+            <div className="mt-4"><Link href="/dashboard"><Button>Go to Dashboard</Button></Link></div>
           </CardContent>
         </Card>
       </div>
@@ -104,7 +125,7 @@ export default function RootAdminPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">User Management</h1>
         <div className="text-sm text-muted-foreground">
@@ -126,13 +147,12 @@ export default function RootAdminPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {/* Never allow changing the root user */}
                 {u.isRoot ? (
                   <Badge>Root</Badge>
                 ) : (
                   <>
                     <Button size="sm" variant={u.role === 'user' ? 'default' : 'outline'} onClick={() => setRole(u.id, "user")}>User</Button>
-                    <Button size="sm" variant={u.role === 'co-admin' ? 'default' : 'outline'} onClick={() => setRole(u.id, "coadmin")}>Co-admin</Button>
+                    <Button size="sm" variant={u.role === 'coadmin' ? 'default' : 'outline'} onClick={() => setRole(u.id, "coadmin")}>Co-admin</Button>
                     <Button size="sm" variant={u.role === 'admin' ? 'destructive' : 'outline'} onClick={() => setRole(u.id, "admin")}>Admin</Button>
                   </>
                 )}
