@@ -11,6 +11,7 @@ export interface AppUser {
   officeName?: string; // Add office name for convenience
   status: UserStatus;
   onboardingComplete: boolean;
+  isRoot?: boolean;
 }
 
 export interface Office {
@@ -29,7 +30,7 @@ export interface DocumentLog {
   notes?: string;
   signedBy?: {
     uid: string;
-    name: string;
+    name: a string;
   }
 }
 

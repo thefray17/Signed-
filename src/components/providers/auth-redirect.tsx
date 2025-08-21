@@ -11,7 +11,7 @@ import { AppUser } from "@/types";
 const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
 
 const publicRoutes = ['/login', '/signup', '/'];
-const authRoutes = ['/admin', '/dashboard', '/pending-approval', '/onboarding'];
+const authRoutes = ['/admin', '/dashboard', '/pending-approval', '/onboarding', '/rootadmin'];
 
 export default function AuthRedirect() {
   const router = useRouter();
@@ -30,17 +30,20 @@ export default function AuthRedirect() {
       
       try {
         const tokenResult = await getIdTokenResult(user, true); // Force refresh
-        const claims = tokenResult.claims;
+        const claims = tokenResult.claims as any;
         const role = (claims.role as string) || "";
+        const email = (user.email || "").toLowerCase();
+        const isRoot = !!claims.isRoot || email === ROOT_ADMIN_EMAIL;
 
-        // Immediately redirect admins and co-admins based on claims
-        if (user.email?.toLowerCase() === ROOT_ADMIN_EMAIL || role === "admin") {
-          if (!pathname.startsWith('/admin')) {
-            router.replace("/admin");
+        // Immediately redirect roots, admins, and co-admins based on claims
+        if (isRoot) {
+          if (!pathname.startsWith('/rootadmin')) {
+            router.replace("/rootadmin");
           }
           return;
         }
-        if (role === "co-admin") {
+
+        if (role === "admin" || role === "co-admin") {
              if (!pathname.startsWith('/admin')) {
                 router.replace("/admin");
             }

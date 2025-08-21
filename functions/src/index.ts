@@ -7,9 +7,7 @@ initializeApp();
 
 const ROOT = "eballeskaye@gmail.com";
 
-/**
- * Gen-1 auth trigger: make root email an admin, others start pending.
- */
+/** Make root admin + isRoot on first auth create */
 export const onAuthCreate = functions.auth.user().onCreate(async (user) => {
   const db = getFirestore();
   const auth = getAuth();
@@ -22,10 +20,10 @@ export const onAuthCreate = functions.auth.user().onCreate(async (user) => {
     updatedAt: Date.now(),
   };
 
-  if (user.email?.toLowerCase() === ROOT) {
-    await auth.setCustomUserClaims(user.uid, { role: "admin" });
+  if ((user.email || "").toLowerCase() === ROOT) {
+    await auth.setCustomUserClaims(user.uid, { role: "admin", isRoot: true });
     await db.doc(`users/${user.uid}`).set(
-      { ...base, role: "admin", status: "approved", updatedAt: Date.now() },
+      { ...base, role: "admin", status: "approved", isRoot: true, updatedAt: Date.now() },
       { merge: true }
     );
   } else {
@@ -33,46 +31,33 @@ export const onAuthCreate = functions.auth.user().onCreate(async (user) => {
   }
 });
 
-/**
- * Gen-1 callable: admins can grant coadmin; only root can grant admin.
- */
+/** Only root can assign Admin; Admin (or root) can assign Co-admin; nobody can change the root user */
 export const assignUserRole = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Sign in");
-  }
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign in");
 
-  const { targetUserId, role } = (data || {}) as {
-    targetUserId?: string;
-    role?: "user" | "coadmin" | "admin";
-  };
+  const { targetUserId, role } = (data || {}) as { targetUserId?: string; role?: "user" | "coadmin" | "admin" };
+  if (!targetUserId || !role) throw new functions.https.HttpsError("invalid-argument", "targetUserId and role are required");
 
-  if (!targetUserId || !role) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "targetUserId and role are required"
-    );
-  }
-
+  const auth = getAuth();
   const callerEmail = String(context.auth.token.email || "").toLowerCase();
+  const isRootCaller = !!context.auth.token.isRoot || callerEmail === ROOT;
   const callerRole = String(context.auth.token.role || "");
 
-  if (role === "admin" && callerEmail !== ROOT) {
-    throw new functions.https.HttpsError(
-      "permission-denied",
-      "Only root admin can assign admin"
-    );
-  }
-  if (role === "coadmin" && !(callerRole === "admin" || callerEmail === ROOT)) {
-    throw new functions.https.HttpsError(
-      "permission-denied",
-      "Only admin can assign coadmin"
-    );
+  // Prevent anyone from modifying the root user (even the root themself)
+  const target = await auth.getUser(targetUserId);
+  if ((target.email || "").toLowerCase() === ROOT) {
+    throw new functions.https.HttpsError("permission-denied", "Root admin cannot be modified.");
   }
 
-  await getAuth().setCustomUserClaims(targetUserId, { role });
-  await getFirestore()
-    .doc(`users/${targetUserId}`)
-    .set({ role, updatedAt: Date.now() }, { merge: true });
+  if (role === "admin" && !isRootCaller)
+    throw new functions.https.HttpsError("permission-denied", "Only root can assign Admin.");
+  if (role === "coadmin" && !(callerRole === "admin" || isRootCaller))
+    throw new functions.https.HttpsError("permission-denied", "Only Admin can assign Co-admin.");
 
+  await auth.setCustomUserClaims(targetUserId, { role, isRoot: false }); // never grant isRoot here
+  await getFirestore().doc(`users/${targetUserId}`).set(
+    { role, isRoot: false, updatedAt: Date.now() },
+    { merge: true }
+  );
   return { ok: true };
 });
