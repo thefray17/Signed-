@@ -9,7 +9,7 @@ import { FileSignature, Home, FileText, Bell, LogOut } from "lucide-react";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import { auth } from '@/lib/firebase-client';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -85,6 +85,14 @@ export default function DashboardLayout({
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
+                        {(user.role === 'admin' || user.role === 'co-admin') && (
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip="Manage Offices">
+                                    <Link href="/admin/offices">
+                                        <span>Manage Offices</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>)}
                             <SidebarMenuItem>
                             <SidebarMenuButton asChild tooltip="Notifications">
                                 <Link href="/dashboard/notifications">
