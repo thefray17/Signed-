@@ -42,3 +42,19 @@ export interface Document {
   currentOfficeId: string;
   history: DocumentLog[];
 }
+
+export type NotificationType = 'document_signed' | 'document_received';
+
+export interface Notification {
+    id: string;
+    type: NotificationType;
+    document: {
+        id: string;
+        title: string;
+    };
+    actor?: {
+        name: string;
+    };
+    timestamp: any;
+    read: boolean;
+}

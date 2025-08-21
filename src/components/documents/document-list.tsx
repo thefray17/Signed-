@@ -2,6 +2,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from 'next/link';
 import {
   Table,
   TableBody,
@@ -14,13 +15,14 @@ import { Badge } from "@/components/ui/badge";
 import type { Document as DocumentType } from "@/types";
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from "../ui/button";
-import { Loader2, MoreHorizontal } from "lucide-react";
+import { Loader2, MoreHorizontal, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -76,11 +78,16 @@ export function DocumentList({ documents, type }: DocumentListProps) {
   }
 
   const getLastUpdate = (doc: DocumentType) => {
+    // Find the latest timestamp in the history
     if (doc.history && doc.history.length > 0) {
-        const lastLog = doc.history[doc.history.length - 1];
-        if (lastLog.timestamp && lastLog.timestamp.toDate) {
-             return formatDistanceToNow(lastLog.timestamp.toDate(), { addSuffix: true });
-        }
+      const latestLog = doc.history.reduce((latest, current) => {
+        if (!latest.timestamp) return current;
+        if (!current.timestamp) return latest;
+        return current.timestamp.toMillis() > latest.timestamp.toMillis() ? current : latest;
+      });
+      if (latestLog.timestamp && latestLog.timestamp.toDate) {
+           return formatDistanceToNow(latestLog.timestamp.toDate(), { addSuffix: true });
+      }
     }
     if (doc.createdAt && doc.createdAt.toDate) {
         return formatDistanceToNow(doc.createdAt.toDate(), { addSuffix: true });
@@ -89,7 +96,8 @@ export function DocumentList({ documents, type }: DocumentListProps) {
   }
   
   const getCurrentOffice = (doc: DocumentType) => {
-    const currentLog = doc.history.find(log => log.officeId === doc.currentOfficeId);
+    if (doc.currentStatus === 'completed') return 'Completed';
+    const currentLog = doc.history.find(log => log.officeId === doc.currentOfficeId && (log.status === 'in_transit' || log.status === 'pending_transit'));
     return currentLog?.officeName || 'Unknown Office';
   }
 
@@ -129,7 +137,7 @@ export function DocumentList({ documents, type }: DocumentListProps) {
               </Badge>
             </TableCell>
             <TableCell className="hidden md:table-cell">
-                {type === 'sent' ? getCurrentOffice(doc) : doc.history[0]?.officeName}
+                {type === 'sent' ? getCurrentOffice(doc) : doc.history[0]?.officeName || 'N/A'}
             </TableCell>
             <TableCell className="text-right">{getLastUpdate(doc)}</TableCell>
              <TableCell>
@@ -142,9 +150,19 @@ export function DocumentList({ documents, type }: DocumentListProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                  <DropdownMenuItem>View Details</DropdownMenuItem>
-                  {type === 'received' && <DropdownMenuItem onClick={() => handleAction(doc.id, 'signed')}>Sign Document</DropdownMenuItem>}
-                  {type === 'received' && <DropdownMenuItem className="text-destructive" onClick={() => handleAction(doc.id, 'rejected')}>Reject Document</DropdownMenuItem>}
+                  <DropdownMenuItem asChild>
+                    <Link href={`/dashboard/documents/${doc.id}`}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Details
+                    </Link>
+                  </DropdownMenuItem>
+                  {type === 'received' && (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleAction(doc.id, 'signed')}>Sign Document</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleAction(doc.id, 'rejected')}>Reject Document</DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </TableCell>
