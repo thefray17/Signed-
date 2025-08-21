@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from "next/navigation";
 import { FileSignature, Home, UserCheck, Building, Users, LogOut } from "lucide-react";
 
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
@@ -89,7 +89,7 @@ export default function AdminLayout({
                         </Button>
                     </SidebarFooter>
                 </Sidebar>
-                <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+                <div className="flex flex-col sm:py-4 sm:pl-14">
                     <Header title="Admin Dashboard"/>
                      <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
                         {children}
