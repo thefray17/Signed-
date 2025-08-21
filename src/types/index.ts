@@ -27,6 +27,10 @@ export interface DocumentLog {
   officeName?: string;
   recipientRole?: string;
   notes?: string;
+  signedBy?: {
+    uid: string;
+    name: string;
+  }
 }
 
 export interface Document {

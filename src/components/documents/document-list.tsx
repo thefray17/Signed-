@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useTransition } from "react";
 import {
   Table,
   TableBody,
@@ -13,14 +14,17 @@ import { Badge } from "@/components/ui/badge";
 import type { Document as DocumentType } from "@/types";
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from "../ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { Loader2, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { updateDocumentStatusAction } from "@/app/dashboard/documents/actions";
 
 interface DocumentListProps {
   documents: DocumentType[];
@@ -28,6 +32,33 @@ interface DocumentListProps {
 }
 
 export function DocumentList({ documents, type }: DocumentListProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+
+  const handleAction = (docId: string, status: 'signed' | 'rejected') => {
+    if (!user || !user.office) {
+      toast({ variant: 'destructive', title: 'Error', description: 'User or office information is missing.' });
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await updateDocumentStatusAction({
+        docId,
+        newStatus: status,
+        userId: user.uid,
+        userDisplayName: user.displayName || 'Anonymous',
+        userOfficeId: user.office as string,
+      });
+
+      if (result.error) {
+        toast({ variant: 'destructive', title: `Action Failed`, description: result.error });
+      } else {
+        toast({ title: `Document ${status}`, description: `The document has been successfully ${status}.` });
+      }
+    });
+  };
+
 
   const getStatusVariant = (status: string) => {
     switch(status) {
@@ -104,16 +135,16 @@ export function DocumentList({ documents, type }: DocumentListProps) {
              <TableCell>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button aria-label="Open document actions menu" size="icon" variant="ghost">
-                    <MoreHorizontal className="h-4 w-4" />
+                  <Button aria-label="Open document actions menu" size="icon" variant="ghost" disabled={isPending}>
+                    {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <MoreHorizontal className="h-4 w-4" />}
                     <span className="sr-only">Toggle menu</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                   <DropdownMenuItem>View Details</DropdownMenuItem>
-                  {type === 'received' && <DropdownMenuItem>Sign Document</DropdownMenuItem>}
-                  {type === 'received' && <DropdownMenuItem className="text-destructive">Reject Document</DropdownMenuItem>}
+                  {type === 'received' && <DropdownMenuItem onClick={() => handleAction(doc.id, 'signed')}>Sign Document</DropdownMenuItem>}
+                  {type === 'received' && <DropdownMenuItem className="text-destructive" onClick={() => handleAction(doc.id, 'rejected')}>Reject Document</DropdownMenuItem>}
                 </DropdownMenuContent>
               </DropdownMenu>
             </TableCell>
