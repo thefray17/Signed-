@@ -6,7 +6,7 @@ export interface AppUser {
   email: string | null;
   displayName: string | null;
   role: UserRole;
-  office: string | null;
+  office: string | null; // This will be an office ID
   status: UserStatus;
   onboardingComplete: boolean;
 }

@@ -1,4 +1,11 @@
-import { PlusCircle } from "lucide-react";
+"use client";
+
+import { useState, useEffect } from "react";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Office } from "@/types";
+
+import { PlusCircle, MoreHorizontal } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -22,17 +29,57 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from "lucide-react"
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Mock data
-const offices = [
-    { id: 'mayor', name: "Mayor's Office", employeeCount: 15 },
-    { id: 'hr', name: 'Human Resources', employeeCount: 8 },
-    { id: 'accounting', name: 'Accounting Office', employeeCount: 12 },
-    { id: 'it', name: 'IT Department', employeeCount: 5 },
-];
+interface OfficeWithCount extends Office {
+    employeeCount: number;
+}
 
 export default function OfficesPage() {
+    const [offices, setOffices] = useState<OfficeWithCount[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchOffices = async () => {
+            setLoading(true);
+            try {
+                const officesCollection = collection(db, "offices");
+                const officeSnapshot = await getDocs(officesCollection);
+                const officesList = officeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Office));
+                
+                const usersCollection = collection(db, "users");
+                const usersSnapshot = await getDocs(usersCollection);
+                const userCountByOffice = usersSnapshot.docs.reduce((acc, userDoc) => {
+                    const officeId = userDoc.data().office;
+                    if(officeId) {
+                        acc[officeId] = (acc[officeId] || 0) + 1;
+                    }
+                    return acc;
+                }, {} as Record<string, number>);
+
+                const officesWithCount = officesList.map(office => ({
+                    ...office,
+                    employeeCount: userCountByOffice[office.id] || 0
+                }));
+
+                setOffices(officesWithCount);
+
+            } catch (error) {
+                 console.error("Error fetching offices: ", error);
+                 toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not load offices.",
+                 });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchOffices();
+    }, [toast]);
+
   return (
     <Card>
       <CardHeader>
@@ -63,27 +110,35 @@ export default function OfficesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {offices.map(office => (
-              <TableRow key={office.id}>
-                <TableCell className="font-medium">{office.name}</TableCell>
-                <TableCell className="hidden md:table-cell">{office.employeeCount}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+            {loading ? (
+                <TableRow>
+                    <TableCell colSpan={3}>
+                        <Skeleton className="h-10 w-full" />
+                    </TableCell>
+                </TableRow>
+            ) : (
+                offices.map(office => (
+                  <TableRow key={office.id}>
+                    <TableCell className="font-medium">{office.name}</TableCell>
+                    <TableCell className="hidden md:table-cell">{office.employeeCount}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                          <DropdownMenuItem>Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+            )}
           </TableBody>
         </Table>
       </CardContent>

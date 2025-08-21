@@ -1,3 +1,10 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { AppUser } from "@/types";
+
 import {
   Card,
   CardContent,
@@ -23,17 +30,36 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react"
-
-// Mock data
-const users = [
-    { id: 'admin01', name: 'Admin User', email: 'eballeskaye@gmail.com', office: 'IT Department', role: 'admin', status: 'approved' },
-    { id: 'user123', name: 'John Doe', email: 'john.d@example.com', office: "Mayor's Office", role: 'user', status: 'approved' },
-    { id: 'user456', name: 'Jane Smith', email: 'jane.s@example.com', office: 'Human Resources', role: 'co-admin', status: 'approved' },
-    { id: 'user789', name: 'Peter Jones', email: 'peter.j@example.com', office: 'Accounting Office', role: 'user', status: 'pending_approval' },
-    { id: 'user101', name: 'Mary Johnson', email: 'mary.j@example.com', office: 'IT Department', role: 'user', status: 'rejected' },
-];
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function UsersPage() {
+    const [users, setUsers] = useState<AppUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            setLoading(true);
+            try {
+                const usersCollection = collection(db, "users");
+                const userSnapshot = await getDocs(usersCollection);
+                const usersList = userSnapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as AppUser));
+                setUsers(usersList);
+            } catch (error) {
+                console.error("Error fetching users: ", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not load users.",
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchUsers();
+    }, [toast]);
+
   return (
     <Card>
       <CardHeader>
@@ -56,37 +82,45 @@ export default function UsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map(user => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  <div className="font-medium">{user.name}</div>
-                  <div className="text-sm text-muted-foreground">{user.email}</div>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">{user.office}</TableCell>
-                <TableCell className="hidden sm:table-cell">
-                    <Badge variant={user.role === 'admin' ? "default" : "secondary"}>{user.role}</Badge>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                    <Badge variant={user.status === 'approved' ? 'default' : user.status === 'rejected' ? 'destructive' : 'secondary'}>{user.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>Change Role</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Disable User</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+             {loading ? (
+                <TableRow>
+                    <TableCell colSpan={5}>
+                        <Skeleton className="h-10 w-full" />
+                    </TableCell>
+                </TableRow>
+             ) : (
+                users.map(user => (
+                  <TableRow key={user.uid}>
+                    <TableCell>
+                      <div className="font-medium">{user.displayName}</div>
+                      <div className="text-sm text-muted-foreground">{user.email}</div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{user.office}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                        <Badge variant={user.role === 'admin' ? "default" : "secondary"}>{user.role}</Badge>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                        <Badge variant={user.status === 'approved' ? 'default' : user.status === 'rejected' ? 'destructive' : 'secondary'}>{user.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                          <DropdownMenuItem>Change Role</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive">Disable User</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+             )}
           </TableBody>
         </Table>
       </CardContent>
