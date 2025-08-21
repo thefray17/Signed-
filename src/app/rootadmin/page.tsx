@@ -4,7 +4,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getIdTokenResult } from "firebase/auth";
 import { httpsCallable, getFunctions } from "firebase/functions";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { auth } from "@/lib/firebase-client";
@@ -28,6 +27,7 @@ export default function RootAdminPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!authUser || !authUser.isRoot) {
+        // This check will now work correctly because useAuth provides the isRoot status.
         setLoading(false);
         return;
     }

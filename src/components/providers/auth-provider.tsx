@@ -1,12 +1,12 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { onIdTokenChanged, User as FirebaseUser, getIdTokenResult } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firebase-app';
 import type { AppUser } from '@/types';
-import { Skeleton } from '../ui/skeleton';
 import { FileSignature } from 'lucide-react';
 
 export interface AuthContextType {
@@ -23,14 +23,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribe = onIdTokenChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
-        // Fetch extended user profile from Firestore
+        // Fetch extended user profile from Firestore and custom claims
         const userDocRef = doc(db, 'users', fbUser.uid);
-        const userDoc = await getDoc(userDocRef);
+        const [userDoc, tokenResult] = await Promise.all([
+            getDoc(userDocRef),
+            getIdTokenResult(fbUser, true), // Force refresh to get latest claims
+        ]);
+        
+        const claims = tokenResult.claims;
+
         if (userDoc.exists()) {
-          setUser({ uid: fbUser.uid, ...userDoc.data() } as AppUser);
+          const firestoreData = userDoc.data();
+          setUser({ 
+              uid: fbUser.uid, 
+              ...firestoreData,
+              isRoot: !!claims.isRoot, // Set isRoot from claims
+              role: claims.role || firestoreData.role, // Prioritize claim role
+          } as AppUser);
         } else {
             // This might be a new user who hasn't completed onboarding
             setUser({
@@ -40,7 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 role: 'user',
                 office: null,
                 status: 'pending',
-                onboardingComplete: false
+                onboardingComplete: false,
+                isRoot: !!claims.isRoot,
             });
         }
       } else {
