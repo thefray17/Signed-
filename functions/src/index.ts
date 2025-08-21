@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
@@ -9,9 +8,7 @@ initializeApp();
 
 const ROOT = "eballeskaye@gmail.com";
 
-/**
- * Bootstrap root admin on first sign-in (Gen 2).
- */
+/** Bootstrap root admin on first sign-in (Gen 2). */
 export const onAuthCreate = onUserCreated(async (event) => {
   const user = event.data;
   const db = getFirestore();
@@ -36,9 +33,7 @@ export const onAuthCreate = onUserCreated(async (event) => {
   }
 });
 
-/**
- * Assign roles (admins can grant coadmin; only root can grant admin).
- */
+/** Assign roles (admins can grant coadmin; only root can grant admin). */
 export const assignUserRole = onCall(async (req) => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Sign in");
 

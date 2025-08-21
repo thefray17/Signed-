@@ -4,8 +4,8 @@
   "type": "module",
   "main": "lib/index.js",
   "scripts": {
-    "build": "rimraf lib && tsc",
-    "watch": "tsc -w",
+    "build": "rimraf lib && tsc -p tsconfig.json",
+    "watch": "tsc -w -p tsconfig.json",
     "lint": "echo \"(add eslint if you want)\"",
     "deploy": "firebase deploy --only functions"
   },
