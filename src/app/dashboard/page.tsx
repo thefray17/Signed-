@@ -56,6 +56,7 @@ import { createDocumentAction } from "./actions";
 import { db } from "@/lib/firebase-app";
 import type { Office } from "@/types";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const recentDocuments = [
   { id: "DOC-001", title: "Budget Proposal 2024", status: "in_transit", office: "Mayor's Office", lastUpdate: "2 hours ago" },
@@ -204,63 +205,67 @@ export default function DashboardPage() {
                             
                             <Separator />
                             
-                            <div>
-                                <h3 className="text-lg font-medium mb-2">Routing Workflow</h3>
-                                {fields.map((field, index) => (
-                                    <div key={field.id} className="p-4 border rounded-md mb-4 relative">
-                                        <h4 className="text-md font-semibold mb-2">Step {index + 1}</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name={`workflow.${index}.destinationOfficeId`}
-                                                render={({ field }) => (
-                                                  <FormItem>
-                                                    <FormLabel>Forward To Office</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                      <FormControl>
-                                                        <SelectTrigger>
-                                                          <SelectValue placeholder="Select destination office" />
-                                                        </SelectTrigger>
-                                                      </FormControl>
-                                                      <SelectContent>
-                                                        {offices.map((office) => (
-                                                          <SelectItem key={office.id} value={office.id}>
-                                                            {office.name}
-                                                          </SelectItem>
-                                                        ))}
-                                                      </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}
-                                              />
-                                            <FormField
-                                                control={form.control}
-                                                name={`workflow.${index}.recipientRole`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Recipient Role</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g., Department Head" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                         {fields.length > 1 && (
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="icon"
-                                              className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
-                                              onClick={() => remove(index)}
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                          )}
+                            <div className="space-y-2">
+                                <h3 className="text-lg font-medium">Routing Workflow</h3>
+                                <ScrollArea className="h-72 w-full">
+                                    <div className="pr-4">
+                                        {fields.map((field, index) => (
+                                            <div key={field.id} className="p-4 border rounded-md mb-4 relative">
+                                                <h4 className="text-md font-semibold mb-2">Step {index + 1}</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`workflow.${index}.destinationOfficeId`}
+                                                        render={({ field }) => (
+                                                          <FormItem>
+                                                            <FormLabel>Forward To Office</FormLabel>
+                                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                              <FormControl>
+                                                                <SelectTrigger>
+                                                                  <SelectValue placeholder="Select destination office" />
+                                                                </SelectTrigger>
+                                                              </FormControl>
+                                                              <SelectContent>
+                                                                {offices.map((office) => (
+                                                                  <SelectItem key={office.id} value={office.id}>
+                                                                    {office.name}
+                                                                  </SelectItem>
+                                                                ))}
+                                                              </SelectContent>
+                                                            </Select>
+                                                            <FormMessage />
+                                                          </FormItem>
+                                                        )}
+                                                      />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`workflow.${index}.recipientRole`}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Recipient Role</FormLabel>
+                                                                <FormControl>
+                                                                    <Input placeholder="e.g., Department Head" {...field} />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                                 {fields.length > 1 && (
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
+                                                      onClick={() => remove(index)}
+                                                    >
+                                                      <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                  )}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                </ScrollArea>
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -270,7 +275,7 @@ export default function DashboardPage() {
                                   <PlusCircle className="mr-2 h-4 w-4" />
                                   Add Routing Step
                                 </Button>
-                                <FormMessage>{form.formState.errors.workflow?.message}</FormMessage>
+                                <FormMessage>{form.formState.errors.workflow?.root?.message || form.formState.errors.workflow?.message}</FormMessage>
                             </div>
 
                             <Button type="submit" className="w-full" disabled={isPending}>
@@ -371,3 +376,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
