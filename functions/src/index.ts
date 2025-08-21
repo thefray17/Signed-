@@ -1,4 +1,3 @@
-
 import * as functions from "firebase-functions";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
@@ -28,6 +27,8 @@ export const onAuthCreate = functions.auth.user().onCreate(async (user) => {
       { merge: true }
     );
   } else {
+    // The client-side form also creates a doc. We use merge:true to not clobber it
+    // if it gets created first. This function acts as the final authority.
     await db.doc(`users/${user.uid}`).set(base, { merge: true });
   }
 });

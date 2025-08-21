@@ -71,19 +71,17 @@ export function SignupForm() {
       // However, for a better UX, we create a basic doc here so the user can
       // proceed without waiting for the function to run, which can have a slight delay.
       // The function will overwrite this with authoritative data.
-       if (!isRootAdmin) {
-          await setDoc(doc(db, "users", user.uid), {
-            uid: user.uid,
-            displayName: values.fullName,
-            email: values.email,
-            role: 'user',
-            office: null,
-            status: 'pending',
-            onboardingComplete: false,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-       }
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        displayName: values.fullName,
+        email: values.email,
+        role: 'user',
+        office: null,
+        status: 'pending',
+        onboardingComplete: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
 
 
       toast({
