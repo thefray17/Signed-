@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import { AuthProvider } from '@/components/providers/auth-provider';
-import AuthRedirect from '@/components/providers/auth-redirect';
-import { Toaster } from '@/components/ui/toaster';
+import { ClientProviders } from '@/components/providers/client-providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -22,11 +20,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <AuthProvider>
-          <AuthRedirect />
+        <ClientProviders>
           {children}
-          <Toaster />
-        </AuthProvider>
+        </ClientProviders>
       </body>
     </html>
   );
