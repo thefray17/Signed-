@@ -52,9 +52,16 @@ export function LoginForm() {
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
+      toast({
+        title: "Login Successful",
+        description: `Welcome back!`,
+      });
+      
       if (userDoc.exists()) {
         const userData = userDoc.data() as AppUser;
-        if (!userData.onboardingComplete) {
+        if (userData.role === 'admin' || userData.role === 'co-admin') {
+            router.push('/admin');
+        } else if (!userData.onboardingComplete) {
             router.push('/onboarding');
         } else if (userData.status === 'pending_approval') {
             router.push('/pending-approval');
@@ -63,29 +70,30 @@ export function LoginForm() {
             toast({
                 variant: 'destructive',
                 title: 'Account Rejected',
-                description: 'Your account registration was rejected. Please contact an administrator or sign up again.',
+                description: 'Your account registration was rejected. Please contact an administrator.',
             });
-            router.push('/signup');
-        } else if (userData.role === 'admin' || userData.role === 'co-admin') {
-            router.push('/admin');
+            router.push('/login');
         } else {
             router.push('/dashboard');
         }
       } else {
+        // This case should ideally not be reached if signup creates a user doc
+        // But as a fallback, send to onboarding
         router.push('/onboarding');
       }
 
-      toast({
-        title: "Login Successful",
-        description: `Welcome back!`,
-      });
-
     } catch (error: any) {
       console.error(error);
+      let errorMessage = "An unknown error occurred. Please try again.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message || "An unknown error occurred. Please try again.",
+        description: errorMessage,
       });
     } finally {
         setIsLoading(false);
