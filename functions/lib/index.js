@@ -5,9 +5,7 @@ import { onUserCreated } from "firebase-functions/v2/auth";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 initializeApp();
 const ROOT = "eballeskaye@gmail.com";
-/**
- * Bootstrap root admin on first sign-in (Gen 2).
- */
+/** Bootstrap root admin on first sign-in (Gen 2). */
 export const onAuthCreate = onUserCreated(async (event) => {
     const user = event.data;
     const db = getFirestore();
@@ -27,9 +25,7 @@ export const onAuthCreate = onUserCreated(async (event) => {
         await db.doc(`users/${user.uid}`).set(base, { merge: true });
     }
 });
-/**
- * Assign roles (admins can grant coadmin; only root can grant admin).
- */
+/** Assign roles (admins can grant coadmin; only root can grant admin). */
 export const assignUserRole = onCall(async (req) => {
     if (!req.auth)
         throw new HttpsError("unauthenticated", "Sign in");
