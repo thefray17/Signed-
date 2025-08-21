@@ -55,13 +55,16 @@ export function LoginForm() {
       // The AuthRedirect component will handle routing.
       
     } catch (error: any) {
-      console.error(error);
       let errorMessage = "An unknown error occurred. Please try again.";
       // Firebase v9+ uses auth/invalid-credential for most login errors
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = 'Invalid email or password. Please try again.';
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else {
+        // For unexpected errors, it's still good to log them for debugging
+        console.error("Login Error:", error);
+        if (error.message) {
+          errorMessage = error.message;
+        }
       }
       toast({
         variant: "destructive",
