@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDocs, collection, query, limit } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -47,6 +47,12 @@ export function SignupForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
+      // Check if any users exist to determine if this is the first signup
+      const usersCollectionRef = collection(db, "users");
+      const q = query(usersCollectionRef, limit(1));
+      const querySnapshot = await getDocs(q);
+      const isFirstUser = querySnapshot.empty;
+
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         values.email,
@@ -57,24 +63,33 @@ export function SignupForm() {
       await updateProfile(user, {
         displayName: values.fullName,
       });
+      
+      const isAdmin = isFirstUser;
 
       // Create a user document in Firestore
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         displayName: values.fullName,
         email: values.email,
-        role: 'user', // default role
+        role: isAdmin ? 'admin' : 'user',
         office: null,
-        status: 'pending_approval',
-        onboardingComplete: false,
+        status: isAdmin ? 'approved' : 'pending_approval',
+        onboardingComplete: isAdmin ? true : false,
       });
 
       toast({
         title: "Account Created",
-        description: "Your account has been successfully created. Please complete your profile.",
+        description: isAdmin 
+            ? "Welcome, Admin! Your account is ready." 
+            : "Your account has been created. Please complete your profile.",
       });
 
-      router.push("/onboarding");
+      if (isAdmin) {
+        router.push("/admin");
+      } else {
+        router.push("/onboarding");
+      }
+
     } catch (error: any) {
       console.error(error);
       toast({
