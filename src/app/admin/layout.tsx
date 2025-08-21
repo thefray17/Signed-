@@ -18,27 +18,25 @@ import { Header } from '@/components/layout/header';
 import { SidebarNav, type NavItem } from '@/components/layout/sidebar-nav';
 
 const navItems: NavItem[] = [
-    { href: "/admin/approvals", label: "Approvals", icon: UserCheck, roles: ['admin', 'co-admin'] },
-    { href: "/admin/users", label: "Manage Users", icon: Users, roles: ['admin', 'co-admin'] },
-    { href: "/admin/offices", label: "Manage Offices", icon: Building, roles: ['admin', 'co-admin'] },
+    { href: "/admin/approvals", label: "Approvals", icon: UserCheck, roles: ['admin', 'coadmin'] },
+    { href: "/admin/users", label: "Manage Users", icon: Users, roles: ['admin', 'coadmin'] },
+    { href: "/admin/offices", label: "Manage Offices", icon: Building, roles: ['admin', 'coadmin'] },
 ];
 
 
-function AdminMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'co-admin' | 'admin', onSignOut: () => void }) {
+function AdminMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'coadmin' | 'admin', onSignOut: () => void }) {
     const { openMobile, setOpenMobile } = useSidebar();
     return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile}>
             <SheetContent side="left" className="p-0 w-[18rem]">
-                <SheetHeader className="sr-only">
-                    <SheetTitle>Admin Menu</SheetTitle>
-                    <SheetDescription>Navigation links for the admin dashboard.</SheetDescription>
-                </SheetHeader>
-                 <SidebarHeader>
-                    <div className="flex items-center gap-2 p-2">
+                <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="sr-only">Admin Menu</SheetTitle>
+                    <SheetDescription className="sr-only">Navigation links for the admin dashboard.</SheetDescription>
+                     <div className="flex items-center gap-2">
                         <FileSignature className="h-6 w-6 text-primary"/>
                         <span className="text-lg font-semibold">Signed! Admin</span>
                     </div>
-                </SidebarHeader>
+                </SheetHeader>
                 <SidebarContent>
                     <SidebarNav navItems={navItems} userRole={userRole} />
                 </SidebarContent>

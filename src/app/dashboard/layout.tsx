@@ -16,21 +16,19 @@ import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/layout/header';
 
-function DashboardMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'co-admin' | 'admin', onSignOut: () => void }) {
+function DashboardMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'coadmin' | 'admin', onSignOut: () => void }) {
     const { openMobile, setOpenMobile } = useSidebar();
     return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile}>
             <SheetContent side="left" className="p-0 w-[18rem]">
-                 <SheetHeader className="sr-only">
-                    <SheetTitle>Main Menu</SheetTitle>
-                    <SheetDescription>Navigation links for the user dashboard.</SheetDescription>
-                </SheetHeader>
-                <SidebarHeader>
-                    <div className="flex items-center gap-2 p-2">
+                 <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="sr-only">Main Menu</SheetTitle>
+                    <SheetDescription className="sr-only">Navigation links for the user dashboard.</SheetDescription>
+                    <div className="flex items-center gap-2">
                         <FileSignature className="h-6 w-6 text-primary"/>
                         <span className="text-lg font-semibold">Signed!</span>
                     </div>
-                </SidebarHeader>
+                </SheetHeader>
                 <SidebarContent>
                     <SidebarMenu>
                         <SidebarMenuItem>
@@ -49,7 +47,7 @@ function DashboardMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'c
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
-                        {(userRole === 'admin' || userRole === 'co-admin') && (
+                        {(userRole === 'admin' || userRole === 'coadmin') && (
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild tooltip="Manage Offices">
                                     <Link href="/admin/offices">
@@ -150,7 +148,7 @@ export default function DashboardLayout({
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
-                        {(user.role === 'admin' || user.role === 'co-admin') && (
+                        {(user.role === 'admin' || user.role === 'coadmin') && (
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild tooltip="Manage Offices">
                                     <Link href="/admin/offices">

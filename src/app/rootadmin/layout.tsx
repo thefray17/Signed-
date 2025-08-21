@@ -4,7 +4,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import { FileSignature, ShieldAlert, LogOut } from "lucide-react";
+import { ShieldAlert, LogOut } from "lucide-react";
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenuItem, SidebarMenu, SidebarMenuButton, SidebarInset, useSidebar } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -14,23 +14,20 @@ import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase-client';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Header } from '@/components/layout/header';
 
 function RootAdminMobileSidebar({ onSignOut }: { onSignOut: () => void }) {
     const { openMobile, setOpenMobile } = useSidebar();
     return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile}>
             <SheetContent side="left" className="p-0 w-[18rem]">
-                <SheetHeader className="sr-only">
-                    <SheetTitle>Root Admin Menu</SheetTitle>
-                    <SheetDescription>Navigation links for the root admin dashboard.</SheetDescription>
-                </SheetHeader>
-                 <SidebarHeader>
-                    <div className="flex items-center gap-2 p-2">
+                <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="sr-only">Root Admin Menu</SheetTitle>
+                    <SheetDescription className="sr-only">Navigation links for the root admin dashboard.</SheetDescription>
+                     <div className="flex items-center gap-2">
                         <ShieldAlert className="h-6 w-6 text-destructive"/>
                         <span className="text-lg font-semibold">Root Admin</span>
                     </div>
-                </SidebarHeader>
+                </SheetHeader>
                 <SidebarContent>
                     {/* Add any mobile nav items here if needed */}
                 </SidebarContent>

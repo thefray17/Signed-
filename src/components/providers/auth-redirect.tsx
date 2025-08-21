@@ -43,7 +43,7 @@ export default function AuthRedirect() {
           return;
         }
 
-        if (role === "admin" || role === "co-admin") {
+        if (role === "admin" || role === "coadmin") {
              if (!pathname.startsWith('/admin') && !pathname.startsWith('/dashboard')) {
                 router.replace("/admin");
             }

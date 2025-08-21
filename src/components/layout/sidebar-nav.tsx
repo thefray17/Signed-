@@ -10,12 +10,12 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  roles: ('user' | 'co-admin' | 'admin')[];
+  roles: ('user' | 'coadmin' | 'admin')[];
 }
 
 interface SidebarNavProps {
   navItems: NavItem[];
-  userRole: 'user' | 'co-admin' | 'admin';
+  userRole: 'user' | 'coadmin' | 'admin';
 }
 
 export function SidebarNav({ navItems, userRole }: SidebarNavProps) {
