@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { FileSignature, UserCheck, Building, Users, LogOut } from "lucide-react";
 
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset, useSidebar, Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,36 @@ const navItems: NavItem[] = [
     { href: "/admin/users", label: "Manage Users", icon: Users, roles: ['admin', 'co-admin'] },
     { href: "/admin/offices", label: "Manage Offices", icon: Building, roles: ['admin', 'co-admin'] },
 ];
+
+
+function AdminMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'co-admin' | 'admin', onSignOut: () => void }) {
+    const { openMobile, setOpenMobile } = useSidebar();
+    return (
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+            <SheetContent side="left" className="p-0 w-[18rem]">
+                <SheetHeader className="sr-only">
+                    <SheetTitle>Admin Menu</SheetTitle>
+                    <SheetDescription>Navigation links for the admin dashboard.</SheetDescription>
+                </SheetHeader>
+                 <SidebarHeader>
+                    <div className="flex items-center gap-2 p-2">
+                        <FileSignature className="h-6 w-6 text-primary"/>
+                        <span className="text-lg font-semibold">Signed! Admin</span>
+                    </div>
+                </SidebarHeader>
+                <SidebarContent>
+                    <SidebarNav navItems={navItems} userRole={userRole} />
+                </SidebarContent>
+                 <SidebarFooter>
+                    <Button variant="ghost" className="w-full justify-start gap-2" onClick={onSignOut}>
+                        <LogOut className="h-4 w-4" />
+                        <span>Logout</span>
+                    </Button>
+                </SidebarFooter>
+            </SheetContent>
+        </Sheet>
+    )
+}
 
 export default function AdminLayout({
   children,
@@ -67,7 +97,8 @@ export default function AdminLayout({
 
     return (
         <SidebarProvider>
-            <Sidebar>
+            <AdminMobileSidebar userRole={user.role} onSignOut={handleSignOut} />
+            <Sidebar className="hidden md:flex">
                 <SidebarHeader>
                     <div className="flex items-center gap-2 p-2">
                         <FileSignature className="h-6 w-6 text-primary"/>

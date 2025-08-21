@@ -4,9 +4,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import { FileSignature, Home, FileText, Bell, LogOut } from "lucide-react";
+import { FileSignature, Home, FileText, Bell, LogOut, Building } from "lucide-react";
 
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, useSidebar, Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,69 @@ import { auth } from '@/lib/firebase-client';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/layout/header';
+
+function DashboardMobileSidebar({ userRole, onSignOut }: { userRole: 'user' | 'co-admin' | 'admin', onSignOut: () => void }) {
+    const { openMobile, setOpenMobile } = useSidebar();
+    return (
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+            <SheetContent side="left" className="p-0 w-[18rem]">
+                 <SheetHeader className="sr-only">
+                    <SheetTitle>Main Menu</SheetTitle>
+                    <SheetDescription>Navigation links for the user dashboard.</SheetDescription>
+                </SheetHeader>
+                <SidebarHeader>
+                    <div className="flex items-center gap-2 p-2">
+                        <FileSignature className="h-6 w-6 text-primary"/>
+                        <span className="text-lg font-semibold">Signed!</span>
+                    </div>
+                </SidebarHeader>
+                <SidebarContent>
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton asChild tooltip="Dashboard">
+                                <Link href="/dashboard">
+                                    <Home/>
+                                    <span>Dashboard</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton asChild tooltip="My Documents">
+                                <Link href="/dashboard/documents">
+                                    <FileText/>
+                                    <span>My Documents</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        {(userRole === 'admin' || userRole === 'co-admin') && (
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip="Manage Offices">
+                                    <Link href="/admin/offices">
+                                        <Building />
+                                        <span>Manage Offices</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>)}
+                            <SidebarMenuItem>
+                            <SidebarMenuButton asChild tooltip="Notifications">
+                                <Link href="/dashboard/notifications">
+                                    <Bell/>
+                                    <span>Notifications</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </SidebarContent>
+                <SidebarFooter>
+                    <Button variant="ghost" className="w-full justify-start gap-2" onClick={onSignOut}>
+                        <LogOut className="h-4 w-4" />
+                        <span>Logout</span>
+                    </Button>
+                </SidebarFooter>
+            </SheetContent>
+        </Sheet>
+    )
+}
 
 export default function DashboardLayout({
   children,
@@ -60,7 +123,8 @@ export default function DashboardLayout({
 
     return (
         <SidebarProvider>
-             <Sidebar>
+             <DashboardMobileSidebar userRole={user.role} onSignOut={handleSignOut} />
+             <Sidebar className="hidden md:flex">
                 <SidebarHeader>
                     <div className="flex items-center gap-2 p-2">
                         <FileSignature className="h-6 w-6 text-primary"/>
@@ -89,6 +153,7 @@ export default function DashboardLayout({
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild tooltip="Manage Offices">
                                     <Link href="/admin/offices">
+                                        <Building />
                                         <span>Manage Offices</span>
                                     </Link>
                                 </SidebarMenuButton>
