@@ -1,3 +1,4 @@
+
 export type UserRole = 'user' | 'co-admin' | 'admin';
 export type UserStatus = 'pending' | 'approved' | 'rejected';
 
@@ -19,10 +20,10 @@ export interface Office {
 export type DocumentStatus = 'draft' | 'in_transit' | 'signed' | 'completed' | 'rejected';
 
 export interface DocumentLog {
-  timestamp: Date; // Keep as Date for client-side display formatting
+  timestamp: any; // Can be Date on client or ServerTimestamp on server
   status: DocumentStatus;
   officeId: string;
-  officeName: string;
+  officeName?: string;
   notes?: string;
 }
 

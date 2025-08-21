@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -43,8 +44,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase-app";
+import { createDocumentAction } from "./actions";
 
 const recentDocuments = [
   { id: "DOC-001", title: "Budget Proposal 2024", status: "in_transit", office: "Mayor's Office", lastUpdate: "2 hours ago" },
@@ -62,52 +62,40 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAddDocOpen, setIsAddDocOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<z.infer<typeof addDocumentSchema>>({
     resolver: zodResolver(addDocumentSchema),
     defaultValues: { title: "" },
   });
 
-  async function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
+  function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
     if (!user || !user.office) {
         toast({ variant: 'destructive', title: 'Error', description: 'User or office information is missing.' });
         return;
     }
-    try {
-        // NOTE: We cannot use serverTimestamp() inside an array.
-        // So we create the document first, then update it with the history array.
-        // A better approach for production would be a Cloud Function transaction.
-        const docRef = await addDoc(collection(db, "documents"), {
-            title: values.title,
-            ownerId: user.uid,
-            createdAt: serverTimestamp(),
-            currentStatus: 'draft',
-            currentOfficeId: user.office,
-            history: [ // We use client-side Date here, but serverTimestamp for the main `createdAt`.
-                {
-                    timestamp: new Date(),
-                    status: 'draft',
-                    officeId: user.office,
-                    notes: 'Document created.',
-                }
-            ]
-        });
+    startTransition(async () => {
+      const result = await createDocumentAction({
+        title: values.title,
+        userId: user.uid,
+        userOffice: user.office as string,
+      });
 
+      if (result.error) {
+        toast({
+          variant: "destructive",
+          title: "Creation Failed",
+          description: result.error,
+        });
+      } else {
         toast({
             title: "Document Created",
             description: "Your document has been saved as a draft.",
         });
         form.reset();
         setIsAddDocOpen(false);
-        // Here you would typically re-fetch the documents list
-    } catch (error) {
-        console.error("Error creating document:", error);
-        toast({
-            variant: "destructive",
-            title: "Creation Failed",
-            description: "Could not create the document. Please try again.",
-        });
-    }
+      }
+    });
   }
 
   return (
@@ -148,8 +136,8 @@ export default function DashboardPage() {
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? (
+                            <Button type="submit" className="w-full" disabled={isPending}>
+                                {isPending ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : "Create Draft"}
                             </Button>

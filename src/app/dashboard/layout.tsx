@@ -2,6 +2,7 @@
 "use client"
 
 import React from 'react';
+import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { FileSignature, Home, FileText, Bell, LogOut } from "lucide-react";
 
@@ -69,21 +70,27 @@ export default function DashboardLayout({
                 <SidebarContent>
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard" tooltip="Dashboard">
-                                <Home/>
-                                <span>Dashboard</span>
+                            <SidebarMenuButton asChild tooltip="Dashboard">
+                                <Link href="/dashboard">
+                                    <Home/>
+                                    <span>Dashboard</span>
+                                </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/documents" tooltip="My Documents">
-                                <FileText/>
-                                <span>My Documents</span>
+                            <SidebarMenuButton asChild tooltip="My Documents">
+                                <Link href="/dashboard/documents">
+                                    <FileText/>
+                                    <span>My Documents</span>
+                                </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                             <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/notifications" tooltip="Notifications">
-                                <Bell/>
-                                <span>Notifications</span>
+                            <SidebarMenuButton asChild tooltip="Notifications">
+                                <Link href="/dashboard/notifications">
+                                    <Bell/>
+                                    <span>Notifications</span>
+                                </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarMenu>
