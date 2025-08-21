@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { onIdTokenChanged, getIdTokenResult } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase-client";
+import { db } from "@/lib/firebase-app";
 import { useRouter, usePathname } from "next/navigation";
 import { AppUser } from "@/types";
 

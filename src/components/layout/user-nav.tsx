@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/firebase-client";
 import { getInitials } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 

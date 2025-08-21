@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/firebase-client";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({

@@ -3,7 +3,8 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase-client';
+import { db } from '@/lib/firebase-app';
 import type { AppUser } from '@/types';
 import { Skeleton } from '../ui/skeleton';
 import { FileSignature } from 'lucide-react';

@@ -9,7 +9,7 @@ import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
-import { auth } from '@/lib/firebase';
+import { auth } from '@/lib/firebase-client';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/layout/header';

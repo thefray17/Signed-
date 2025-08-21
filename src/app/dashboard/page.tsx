@@ -44,7 +44,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-app";
 
 const recentDocuments = [
   { id: "DOC-001", title: "Budget Proposal 2024", status: "in_transit", office: "Mayor's Office", lastUpdate: "2 hours ago" },

@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-app";
 import type { Office } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
