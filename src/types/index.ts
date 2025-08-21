@@ -18,7 +18,7 @@ export interface Office {
   name: string;
 }
 
-export type DocumentStatus = 'draft' | 'in_transit' | 'signed' | 'completed' | 'rejected';
+export type DocumentStatus = 'draft' | 'in_transit' | 'pending_transit' | 'signed' | 'completed' | 'rejected';
 
 export interface DocumentLog {
   timestamp: any; // Can be Date on client or ServerTimestamp on server

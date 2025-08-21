@@ -1,12 +1,13 @@
+
 "use client";
 
 import Link from "next/link";
 import { useState, useTransition, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { collection, getDocs } from "firebase/firestore";
-import { PlusCircle, ArrowUpRight, FileText, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
+import { PlusCircle, ArrowUpRight, FileText, CheckCircle2, XCircle, Clock, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -54,6 +55,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { createDocumentAction } from "./actions";
 import { db } from "@/lib/firebase-app";
 import type { Office } from "@/types";
+import { Separator } from "@/components/ui/separator";
 
 const recentDocuments = [
   { id: "DOC-001", title: "Budget Proposal 2024", status: "in_transit", office: "Mayor's Office", lastUpdate: "2 hours ago" },
@@ -65,8 +67,10 @@ const recentDocuments = [
 
 const addDocumentSchema = z.object({
     title: z.string().min(5, "Title must be at least 5 characters long."),
-    destinationOfficeId: z.string().min(1, "Please select a destination office."),
-    recipientRole: z.string().min(2, "Recipient role must be at least 2 characters."),
+    workflow: z.array(z.object({
+        destinationOfficeId: z.string().min(1, "Please select a destination office."),
+        recipientRole: z.string().min(2, "Recipient role must be at least 2 characters."),
+    })).min(1, "At least one routing step is required."),
 });
 
 export default function DashboardPage() {
@@ -99,7 +103,15 @@ export default function DashboardPage() {
 
   const form = useForm<z.infer<typeof addDocumentSchema>>({
     resolver: zodResolver(addDocumentSchema),
-    defaultValues: { title: "", destinationOfficeId: "", recipientRole: "" },
+    defaultValues: { 
+        title: "", 
+        workflow: [{ destinationOfficeId: "", recipientRole: "" }]
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "workflow",
   });
 
   function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
@@ -107,19 +119,26 @@ export default function DashboardPage() {
         toast({ variant: 'destructive', title: 'Error', description: 'User or office information is missing.' });
         return;
     }
-    const destinationOffice = offices.find(o => o.id === values.destinationOfficeId);
-    if (!destinationOffice) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Selected office not found.' });
-        return;
-    }
+    
+    const workflowWithNames = values.workflow.map(step => {
+        const office = offices.find(o => o.id === step.destinationOfficeId);
+        if (!office) {
+             toast({ variant: 'destructive', title: 'Error', description: `Office for step could not be found.` });
+             throw new Error("Office not found");
+        }
+        return {
+            ...step,
+            destinationOfficeName: office.name,
+        }
+    });
 
     startTransition(async () => {
       const result = await createDocumentAction({
-        ...values,
+        title: values.title,
+        workflow: workflowWithNames,
         userId: user.uid,
         userOfficeId: user.office as string,
-        userOfficeName: user.officeName || "Unknown Office", // Assumes officeName is on user object. Let's add it in types.
-        destinationOfficeName: destinationOffice.name,
+        userOfficeName: user.officeName || "Unknown Office",
       });
 
       if (result.error) {
@@ -148,18 +167,23 @@ export default function DashboardPage() {
             <CardDescription>Start a new document routing process.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
+            <Dialog open={isAddDocOpen} onOpenChange={(isOpen) => {
+              setIsAddDocOpen(isOpen);
+              if (!isOpen) {
+                form.reset();
+              }
+            }}>
                 <DialogTrigger asChild>
                     <Button size="sm" className="w-full">
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Create Document
                     </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
                         <DialogTitle>Create and Route Document</DialogTitle>
                         <DialogDescription>
-                            Enter a title and select the first recipient to start the signing process.
+                            Define the title and workflow for the document. Add steps for each office that needs to sign.
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -177,43 +201,78 @@ export default function DashboardPage() {
                                     </FormItem>
                                 )}
                             />
-                             <FormField
-                                control={form.control}
-                                name="destinationOfficeId"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Forward To Office</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select destination office/department" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {offices.map((office) => (
-                                          <SelectItem key={office.id} value={office.id}>
-                                            {office.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            <FormField
-                                control={form.control}
-                                name="recipientRole"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Recipient Role / Designation</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Department Head, Records Officer" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            
+                            <Separator />
+                            
+                            <div>
+                                <h3 className="text-lg font-medium mb-2">Routing Workflow</h3>
+                                {fields.map((field, index) => (
+                                    <div key={field.id} className="p-4 border rounded-md mb-4 relative">
+                                        <h4 className="text-md font-semibold mb-2">Step {index + 1}</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name={`workflow.${index}.destinationOfficeId`}
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Forward To Office</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue placeholder="Select destination office" />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        {offices.map((office) => (
+                                                          <SelectItem key={office.id} value={office.id}>
+                                                            {office.name}
+                                                          </SelectItem>
+                                                        ))}
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}
+                                              />
+                                            <FormField
+                                                control={form.control}
+                                                name={`workflow.${index}.recipientRole`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Recipient Role</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="e.g., Department Head" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                         {fields.length > 1 && (
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
+                                              onClick={() => remove(index)}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                    </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => append({ destinationOfficeId: "", recipientRole: "" })}
+                                >
+                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                  Add Routing Step
+                                </Button>
+                                <FormMessage>{form.formState.errors.workflow?.message}</FormMessage>
+                            </div>
+
                             <Button type="submit" className="w-full" disabled={isPending}>
                                 {isPending ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
