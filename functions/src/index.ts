@@ -1,72 +1,66 @@
 
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { onUserCreate } from "firebase-functions/v2/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { onUserCreated } from "firebase-functions/v2/auth";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 
 initializeApp();
 
-const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
+const ROOT = "eballeskaye@gmail.com";
 
-export const onauthcreate = onUserCreate(async (event) => {
+/**
+ * Bootstrap root admin on first sign-in (Gen 2).
+ */
+export const onAuthCreate = onUserCreated(async (event) => {
   const user = event.data;
-  const auth = getAuth();
   const db = getFirestore();
+  const auth = getAuth();
 
-  const baseUserDoc = {
-    uid: user.uid,
+  const base = {
     email: user.email ?? "",
-    displayName: user.displayName ?? "",
     role: "user",
     status: "pending",
-    onboardingComplete: false,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   };
 
-  if (user.email?.toLowerCase() === ROOT_ADMIN_EMAIL) {
+  if (user.email?.toLowerCase() === ROOT) {
     await auth.setCustomUserClaims(user.uid, { role: "admin" });
-    await db.doc(`users/${user.uid}`).set({
-      ...baseUserDoc,
-      role: "admin",
-      status: "approved",
-      onboardingComplete: true, 
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
+    await db.doc(`users/${user.uid}`).set(
+      { ...base, role: "admin", status: "approved", updatedAt: Date.now() },
+      { merge: true }
+    );
   } else {
-    await db.doc(`users/${user.uid}`).set(baseUserDoc, { merge: true });
+    await db.doc(`users/${user.uid}`).set(base, { merge: true });
   }
 });
 
-
+/**
+ * Assign roles (admins can grant coadmin; only root can grant admin).
+ */
 export const assignUserRole = onCall(async (req) => {
-  if (!req.auth) throw new HttpsError("unauthenticated", "You must be signed in to perform this action.");
-  
+  if (!req.auth) throw new HttpsError("unauthenticated", "Sign in");
+
   const { targetUserId, role } = req.data || {};
   if (!targetUserId || !role) {
-    throw new HttpsError("invalid-argument", "The function must be called with 'targetUserId' and 'role' arguments.");
+    throw new HttpsError("invalid-argument", "targetUserId and role are required");
   }
 
   const callerEmail = String(req.auth.token.email || "").toLowerCase();
   const callerRole = String(req.auth.token.role || "");
 
-  if (role === "admin" && callerEmail !== ROOT_ADMIN_EMAIL) {
-    throw new HttpsError("permission-denied", "Only the root administrator can assign other admins.");
+  if (role === "admin" && callerEmail !== ROOT) {
+    throw new HttpsError("permission-denied", "Only root admin can assign admin");
   }
-  if (role === "co-admin" && !(callerRole === "admin" || callerEmail === ROOT_ADMIN_EMAIL)) {
-    throw new HttpsError("permission-denied", "Only an admin can assign co-admins.");
+  if (role === "coadmin" && !(callerRole === "admin" || callerEmail === ROOT)) {
+    throw new HttpsError("permission-denied", "Only admin can assign coadmin");
   }
 
-  try {
-    await getAuth().setCustomUserClaims(targetUserId, { role });
-    await getFirestore().doc(`users/${targetUserId}`).update({ 
-      role, 
-      updatedAt: FieldValue.serverTimestamp() 
-    });
-    return { ok: true, message: `Successfully assigned role '${role}' to user.` };
-  } catch (error) {
-    console.error("Error assigning user role:", error);
-    throw new HttpsError("internal", "An unexpected error occurred while assigning the user role.");
-  }
+  await getAuth().setCustomUserClaims(targetUserId, { role });
+  await getFirestore().doc(`users/${targetUserId}`).set(
+    { role, updatedAt: Date.now() },
+    { merge: true }
+  );
+  return { ok: true };
 });

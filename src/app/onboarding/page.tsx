@@ -20,7 +20,7 @@ import type { Office } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const onboardingSchema = z.object({
-  office: z.string({ required_error: "Please select an office." }),
+  office: z.string().min(1, { message: "Please select an office." }),
   role: z.string().min(2, { message: "Role must be at least 2 characters." }),
 });
 
