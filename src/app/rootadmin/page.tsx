@@ -7,11 +7,11 @@ import { getIdTokenResult } from "firebase/auth";
 import { httpsCallable, getFunctions } from "firebase/functions";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { auth } from "@/lib/firebase-client";
-import { db } from "@/lib/firebase-app";
+import { db, app } from "@/lib/firebase-app";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { app } from "@/lib/firebase-app";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type UserRow = { id: string; email: string; role?: string; status?: string; isRoot?: boolean; createdAt?: any };
 
@@ -21,31 +21,48 @@ export default function RootAdminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    const checkAuthAndFetchData = async () => {
       const u = auth.currentUser;
       if (!u) {
           setLoading(false);
           return;
       };
-      const tok = await getIdTokenResult(u, true);
-      const claims = tok.claims as any;
-      const email = (u.email || "").toLowerCase();
-      const root = !!claims.isRoot || email === "eballeskaye@gmail.com";
-      setIsRoot(root);
 
-      if (root) {
-        const snap = await getDocs(
-          query(collection(db, "users"), orderBy("createdAt", "desc"), limit(100))
-        );
-        setUsers(
-          snap.docs.map((d) => {
-            const x = d.data() as any;
-            return { id: d.id, email: x.email, role: x.role, status: x.status, isRoot: x.isRoot, createdAt: x.createdAt };
-          })
-        );
+      try {
+        const tok = await getIdTokenResult(u, true);
+        const claims = tok.claims as any;
+        const email = (u.email || "").toLowerCase();
+        const root = !!claims.isRoot || email === "eballeskaye@gmail.com";
+        setIsRoot(root);
+
+        if (root) {
+          const snap = await getDocs(
+            query(collection(db, "users"), orderBy("createdAt", "desc"), limit(100))
+          );
+          setUsers(
+            snap.docs.map((d) => {
+              const x = d.data() as any;
+              return { id: d.id, email: x.email, role: x.role, status: x.status, isRoot: x.isRoot, createdAt: x.createdAt };
+            })
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    })();
+    };
+    
+    // onAuthStateChanged ensures we run this after user is initialized
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (user) {
+        checkAuthAndFetchData();
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   async function setRole(uid: string, role: "user" | "coadmin" | "admin") {

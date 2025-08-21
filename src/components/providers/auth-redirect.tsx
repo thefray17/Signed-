@@ -44,7 +44,7 @@ export default function AuthRedirect() {
         }
 
         if (role === "admin" || role === "co-admin") {
-             if (!pathname.startsWith('/admin')) {
+             if (!pathname.startsWith('/admin') && !pathname.startsWith('/dashboard')) {
                 router.replace("/admin");
             }
             return;
@@ -62,9 +62,17 @@ export default function AuthRedirect() {
                 router.replace('/dashboard');
              }
           } else if (userData.status === 'pending') {
-            if (pathname !== '/pending-approval') {
-                router.replace('/pending-approval');
-            }
+            // After onboarding, users are sent here.
+            // Let's check if onboarding is complete. If not, send them back.
+             if (!userData.onboardingComplete) {
+                if (pathname !== '/onboarding') {
+                    router.replace('/onboarding');
+                }
+             } else {
+                if (pathname !== '/pending-approval') {
+                    router.replace('/pending-approval');
+                }
+             }
           } else if (userData.status === 'rejected') {
              if (pathname !== '/login') {
                 await auth.signOut();
@@ -76,7 +84,8 @@ export default function AuthRedirect() {
             }
           }
         } else {
-             // If no user doc, something is wrong, send to onboarding as a failsafe
+             // If no user doc, something is wrong (e.g. created but function failed or was slow).
+             // Send to onboarding as a failsafe so they can (re)create the doc.
             if (pathname !== '/onboarding') {
                router.replace('/onboarding');
             }

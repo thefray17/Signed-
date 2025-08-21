@@ -30,7 +30,7 @@ export interface DocumentLog {
   notes?: string;
   signedBy?: {
     uid: string;
-    name: a string;
+    name: string;
   }
 }
 
