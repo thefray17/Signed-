@@ -74,15 +74,16 @@ export default function DashboardPage() {
         return;
     }
     try {
+        const creationTime = new Date();
         await addDoc(collection(db, "documents"), {
             title: values.title,
             ownerId: user.uid,
-            createdAt: serverTimestamp(),
+            createdAt: creationTime,
             currentStatus: 'draft',
             currentOfficeId: user.office,
             history: [
                 {
-                    timestamp: serverTimestamp(),
+                    timestamp: creationTime,
                     status: 'draft',
                     officeId: user.office,
                     notes: 'Document created.',
