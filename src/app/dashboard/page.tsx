@@ -1,11 +1,11 @@
-
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { collection, getDocs } from "firebase/firestore";
 import { PlusCircle, ArrowUpRight, FileText, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,9 +42,18 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { createDocumentAction } from "./actions";
+import { db } from "@/lib/firebase-app";
+import type { Office } from "@/types";
 
 const recentDocuments = [
   { id: "DOC-001", title: "Budget Proposal 2024", status: "in_transit", office: "Mayor's Office", lastUpdate: "2 hours ago" },
@@ -56,6 +65,8 @@ const recentDocuments = [
 
 const addDocumentSchema = z.object({
     title: z.string().min(5, "Title must be at least 5 characters long."),
+    destinationOfficeId: z.string().min(1, "Please select a destination office."),
+    recipientRole: z.string().min(2, "Recipient role must be at least 2 characters."),
 });
 
 export default function DashboardPage() {
@@ -63,10 +74,32 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [isAddDocOpen, setIsAddDocOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [offices, setOffices] = useState<Office[]>([]);
+
+  useEffect(() => {
+    async function fetchOffices() {
+        if (!isAddDocOpen) return;
+        try {
+            const officesCollection = collection(db, "offices");
+            const officeSnapshot = await getDocs(officesCollection);
+            const officesList = officeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Office));
+            setOffices(officesList);
+        } catch (error) {
+            console.error("Error fetching offices: ", error);
+            toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: 'Could not load offices for the dropdown.',
+            });
+        }
+    }
+    fetchOffices();
+  }, [isAddDocOpen, toast]);
+
 
   const form = useForm<z.infer<typeof addDocumentSchema>>({
     resolver: zodResolver(addDocumentSchema),
-    defaultValues: { title: "" },
+    defaultValues: { title: "", destinationOfficeId: "", recipientRole: "" },
   });
 
   function onAddDocumentSubmit(values: z.infer<typeof addDocumentSchema>) {
@@ -74,11 +107,19 @@ export default function DashboardPage() {
         toast({ variant: 'destructive', title: 'Error', description: 'User or office information is missing.' });
         return;
     }
+    const destinationOffice = offices.find(o => o.id === values.destinationOfficeId);
+    if (!destinationOffice) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Selected office not found.' });
+        return;
+    }
+
     startTransition(async () => {
       const result = await createDocumentAction({
-        title: values.title,
+        ...values,
         userId: user.uid,
-        userOffice: user.office as string,
+        userOfficeId: user.office as string,
+        userOfficeName: user.officeName || "Unknown Office", // Assumes officeName is on user object. Let's add it in types.
+        destinationOfficeName: destinationOffice.name,
       });
 
       if (result.error) {
@@ -90,7 +131,7 @@ export default function DashboardPage() {
       } else {
         toast({
             title: "Document Created",
-            description: "Your document has been saved as a draft.",
+            description: "Your document has been routed for signature.",
         });
         form.reset();
         setIsAddDocOpen(false);
@@ -116,9 +157,9 @@ export default function DashboardPage() {
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Create a New Document</DialogTitle>
+                        <DialogTitle>Create and Route Document</DialogTitle>
                         <DialogDescription>
-                            Enter a title for your new document to start. It will be saved as a draft.
+                            Enter a title and select the first recipient to start the signing process.
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -136,10 +177,47 @@ export default function DashboardPage() {
                                     </FormItem>
                                 )}
                             />
+                             <FormField
+                                control={form.control}
+                                name="destinationOfficeId"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Forward To Office</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select destination office/department" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {offices.map((office) => (
+                                          <SelectItem key={office.id} value={office.id}>
+                                            {office.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            <FormField
+                                control={form.control}
+                                name="recipientRole"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Recipient Role / Designation</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Department Head, Records Officer" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <Button type="submit" className="w-full" disabled={isPending}>
                                 {isPending ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : "Create Draft"}
+                                ) : "Create and Send"}
                             </Button>
                         </form>
                     </Form>

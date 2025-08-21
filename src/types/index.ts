@@ -8,6 +8,7 @@ export interface AppUser {
   displayName: string | null;
   role: UserRole;
   office: string | null; // This will be an office ID
+  officeName?: string; // Add office name for convenience
   status: UserStatus;
   onboardingComplete: boolean;
 }
@@ -24,6 +25,7 @@ export interface DocumentLog {
   status: DocumentStatus;
   officeId: string;
   officeName?: string;
+  recipientRole?: string;
   notes?: string;
 }
 

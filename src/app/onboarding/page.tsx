@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { doc, updateDoc, collection, getDocs, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, collection, getDocs, serverTimestamp, getDoc } from "firebase/firestore";
 import { Loader2, Send } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -81,8 +81,17 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
     try {
       const userDocRef = doc(db, 'users', user.uid);
+      const officeDocRef = doc(db, 'offices', values.office);
+      const officeDoc = await getDoc(officeDocRef);
+
+      if (!officeDoc.exists()) {
+        throw new Error("Selected office does not exist.");
+      }
+      const officeName = officeDoc.data().name;
+
       await updateDoc(userDocRef, {
         office: values.office,
+        officeName: officeName,
         role: values.role, // The role here is the requested role. Admin will confirm.
         onboardingComplete: true,
         status: 'pending',
