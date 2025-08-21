@@ -1,24 +1,21 @@
 {
   "name": "signed-functions",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
+  "engines": { "node": "18" },
   "main": "lib/index.js",
   "scripts": {
     "build": "rimraf lib && tsc -p tsconfig.json",
     "watch": "tsc -w -p tsconfig.json",
-    "lint": "echo \"(add eslint if you want)\"",
     "deploy": "firebase deploy --only functions"
   },
   "dependencies": {
-    "firebase-admin": "^12.7.0",
-    "firebase-functions": "^5.1.1"
+    "firebase-admin": "^12.5.0",
+    "firebase-functions": "^4.4.1"
   },
   "devDependencies": {
-    "@types/node": "^20.19.11",
-    "rimraf": "^5.0.10",
-    "typescript": "^5.9.2"
-  },
-  "engines": {
-    "node": "20"
+    "@types/node": "^20.0.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0"
   }
 }
