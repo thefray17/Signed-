@@ -24,19 +24,32 @@ export default function DashboardLayout({
     const { toast } = useToast();
 
     React.useEffect(() => {
-        if (!loading && (!user || !user.onboardingComplete || user.status !== 'approved')) {
-            if (!user) router.push('/login');
-            else if (!user.onboardingComplete) router.push('/onboarding');
-            else if (user.status === 'pending_approval') router.push('/pending-approval');
-            else if (user.status === 'rejected') {
+        if (!loading) {
+            if (!user) {
+                router.push('/login');
+                return;
+            }
+
+            if (user.role === 'admin' || user.role === 'co-admin') {
+                router.push('/admin');
+                return;
+            }
+
+            if (!user.onboardingComplete) {
+                router.push('/onboarding');
+            } else if (user.status === 'pending_approval') {
+                router.push('/pending-approval');
+            } else if (user.status === 'rejected') {
                 signOut(auth);
+                toast({
+                    variant: 'destructive',
+                    title: 'Access Denied',
+                    description: 'Your account registration was rejected.'
+                });
                 router.push('/login');
             }
         }
-        if (!loading && user && (user.role === 'admin' || user.role === 'co-admin')) {
-            router.push('/admin');
-        }
-    }, [user, loading, router]);
+    }, [user, loading, router, toast]);
 
     const handleSignOut = async () => {
         try {
@@ -55,7 +68,7 @@ export default function DashboardLayout({
         }
     };
 
-    if (loading || !user) {
+    if (loading || !user || user.role === 'admin' || user.role === 'co-admin') {
         return (
             <div className="flex h-screen w-full">
                 <div className="hidden md:block w-64 border-r p-4 space-y-4">

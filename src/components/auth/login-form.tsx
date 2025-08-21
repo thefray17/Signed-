@@ -72,6 +72,7 @@ export function LoginForm() {
                 title: 'Account Rejected',
                 description: 'Your account registration was rejected. Please contact an administrator.',
             });
+            setIsLoading(false);
             router.push('/login');
         } else {
             router.push('/dashboard');
@@ -95,8 +96,7 @@ export function LoginForm() {
         title: "Login Failed",
         description: errorMessage,
       });
-    } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }
 
