@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { FileSignature, UserCheck, Building, Users, LogOut } from "lucide-react";
 
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset, useSidebar, Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset, useSidebar } from "@/components/ui/sidebar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
