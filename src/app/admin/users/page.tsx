@@ -3,7 +3,9 @@
 
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase-app";
+import { httpsCallable, getFunctions } from "firebase/functions";
+import { db, app } from "@/lib/firebase-app";
+import { getAuth } from "firebase/auth";
 import type { AppUser } from "@/types";
 
 import {
@@ -28,15 +30,32 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react"
+import { MoreHorizontal, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function UsersPage() {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<AppUser[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
+    const [newRole, setNewRole] = useState<'user' | 'coadmin' | 'admin' | null>(null);
+    const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -61,7 +80,41 @@ export default function UsersPage() {
         fetchUsers();
     }, [toast]);
 
+    const handleOpenRoleDialog = (user: AppUser) => {
+        setSelectedUser(user);
+        setNewRole(user.role);
+        setIsRoleDialogOpen(true);
+    }
+
+    const handleRoleChangeSubmit = async () => {
+        if (!selectedUser || !newRole) return;
+        setIsSubmitting(true);
+        try {
+            const functions = getFunctions(app, "asia-southeast1");
+            const assignUserRole = httpsCallable(functions, "assignUserRole");
+            await assignUserRole({ targetUserId: selectedUser.uid, role: newRole });
+            
+            setUsers(prevUsers => prevUsers.map(u => u.uid === selectedUser.uid ? {...u, role: newRole} : u));
+
+            toast({
+                title: "Role Updated",
+                description: `${selectedUser.displayName}'s role has been changed to ${newRole}.`,
+            });
+            setIsRoleDialogOpen(false);
+        } catch (error: any) {
+            console.error("Error updating role:", error);
+            toast({
+                variant: "destructive",
+                title: "Update Failed",
+                description: error.message || "There was a problem changing the user role.",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Manage Users</CardTitle>
@@ -106,7 +159,7 @@ export default function UsersPage() {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button aria-label="Open user actions menu" aria-haspopup="true" size="icon" variant="ghost">
+                          <Button aria-label="Open user actions menu" aria-haspopup="true" size="icon" variant="ghost" disabled={user.uid === currentUser?.uid}>
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Toggle menu</span>
                           </Button>
@@ -114,7 +167,9 @@ export default function UsersPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Change Role</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenRoleDialog(user)}>
+                            Change Role
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive">Disable User</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -126,5 +181,36 @@ export default function UsersPage() {
         </Table>
       </CardContent>
     </Card>
+
+     <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Change Role for {selectedUser?.displayName}</DialogTitle>
+                <DialogDescription>
+                   Select a new role for this user. They will inherit the permissions of the new role immediately.
+                </DialogDescription>
+            </DialogHeader>
+             {newRole && (
+              <RadioGroup defaultValue={newRole} onValueChange={(value: 'user' | 'coadmin' | 'admin') => setNewRole(value)} className="space-y-2 py-4">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="user" id="r-user" />
+                    <Label htmlFor="r-user">User</Label>
+                  </div>
+                   <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="coadmin" id="r-coadmin" />
+                    <Label htmlFor="r-coadmin">Co-Admin</Label>
+                  </div>
+              </RadioGroup>
+            )}
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsRoleDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleRoleChangeSubmit} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Changes
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+     </Dialog>
+    </>
   );
 }
