@@ -13,17 +13,15 @@ export async function getCurrentUserWithRole(): Promise<AppUser | null> {
   const auth = adminApp.auth();
   let decoded: DecodedIdToken;
 
-  // Try session cookie first; fall back to ID token (emulator).
+  // Try session cookie; fall back to raw ID token (emulator)
   try {
     decoded = await auth.verifySessionCookie(token, true);
   } catch {
     try {
       decoded = await auth.verifyIdToken(token, true);
     } catch (e) {
-      console.error("Auth verify failed:", e);
-      // Clear potentially invalid cookie
-      cookies().delete('session');
-      cookies().delete('__session');
+      // eslint-disable-next-line no-console
+      console.error("[auth-server] verify failed:", e);
       return null;
     }
   }
