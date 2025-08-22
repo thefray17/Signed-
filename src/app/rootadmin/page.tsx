@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { httpsCallable, getFunctions } from "firebase/functions";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
-import { auth } from "@/lib/firebase-client";
+import { getAuth } from "firebase/auth";
 import { db, app } from "@/lib/firebase-app";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -16,6 +16,69 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
 type UserRow = { id: string; email: string; role?: string; status?: string; isRoot?: boolean; createdAt?: any };
+
+function WhoAmI() {
+  const [info, setInfo] = useState<any>(null);
+  useEffect(() => {
+    (async () => {
+      const u = getAuth().currentUser;
+      if (u) {
+        const token = await u.getIdTokenResult();
+        setInfo({
+          email: u?.email,
+          uid: u?.uid,
+          claims: token?.claims,
+        });
+      } else {
+        setInfo({ email: "Not signed in" });
+      }
+    })();
+  }, []);
+  return <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto">{JSON.stringify(info, null, 2)}</pre>;
+}
+
+function RootRepair() {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const run = async () => {
+    try {
+      setBusy(true);
+      const fns = getFunctions(app, "asia-southeast1");
+      const ensure = httpsCallable(fns, "ensureRootClaims");
+      await ensure({});
+      await getAuth().currentUser?.getIdToken(true);
+      setMsg("Root claims asserted. Token refreshed. Reloading...");
+      window.location.reload();
+    } catch (e: any) {
+      setMsg(e?.message || "Failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Root Repair</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <p className="text-sm text-muted-foreground mb-2">If you're having trouble accessing other pages, your token might be stale. Click this button to re-assert your root claims and refresh your session.</p>
+          <Button onClick={run} disabled={busy}>
+            {busy ? "Working…" : "Re‑assert root & refresh token"}
+          </Button>
+          {msg && <div className="text-xs mt-2 text-muted-foreground">{msg}</div>}
+        </div>
+         <div>
+          <h3 className="text-md font-semibold mb-2">Current Claims (Who Am I?)</h3>
+          <WhoAmI />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default function RootAdminPage() {
   const { user: authUser, loading: authLoading } = useAuth();
@@ -73,9 +136,9 @@ export default function RootAdminPage() {
         );
         toast({
           title: "Role Updated",
-          description: `User role has been successfully changed to ${'\'\'\''}${role}${'\'\'\''}.`,
+          description: `User role has been successfully changed to ${role}.`,
         });
-        await auth.currentUser?.getIdToken(true);
+        await getAuth().currentUser?.getIdToken(true);
     } catch (error: any) {
         console.error("Failed to set role:", error);
         toast({
@@ -126,7 +189,7 @@ export default function RootAdminPage() {
                   {u.isRoot && <span className="ml-2 text-xs font-bold text-destructive">(root)</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {u.isRoot ? (
                   <Badge>Root</Badge>
                 ) : (
@@ -141,6 +204,8 @@ export default function RootAdminPage() {
           ))}
         </CardContent>
       </Card>
+
+      <RootRepair />
 
       <Card>
         <CardHeader><CardTitle>Quick links</CardTitle></CardHeader>
