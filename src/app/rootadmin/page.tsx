@@ -65,10 +65,10 @@ function RootRepair() {
     <Card>
       <CardHeader>
         <CardTitle>Root Repair</CardTitle>
+        <CardDescription>Re-assert your root claims and refresh your session token if you are having access issues.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <p className="text-sm text-muted-foreground mb-2">If you're having trouble accessing other pages, your token might be stale. Click this button to re-assert your root claims and refresh your session.</p>
           <Button onClick={run} disabled={busy}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Re‑assert root & refresh token"}
           </Button>
@@ -107,7 +107,6 @@ function RulesInspector() {
             await getDoc(docRef);
             setResult(`✅ SUCCESS: Read operation for path "${path}" was allowed.`);
         } else {
-            // Using set with merge to avoid overwriting and test write access
             await setDoc(docRef, { test_field: `test_write_${Date.now()}` }, { merge: true });
             setResult(`✅ SUCCESS: Write operation for path "${path}" was allowed.`);
         }
@@ -267,51 +266,53 @@ export default function RootAdminPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader><CardTitle>Users (latest 100)</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {users.length === 0 && <div className="text-sm text-muted-foreground">No users found.</div>}
-          {users.map((u) => (
-            <div key={u.id} className="flex items-center justify-between border rounded-md p-3">
-              <div className="min-w-0">
-                <div className="font-medium">{u.email}</div>
-                <div className="text-xs text-muted-foreground">
-                  role: <Badge variant="secondary">{u.role || "user"}</Badge> · status: {u.status || "pending"}
-                  {u.isRoot && <span className="ml-2 text-xs font-bold text-destructive">(root)</span>}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {u.isRoot ? (
-                  <Badge>Root</Badge>
-                ) : (
-                  <>
-                    <Button size="sm" variant={u.role === 'user' ? 'default' : 'outline'} onClick={() => setRole(u.id, "user")}>User</Button>
-                    <Button size="sm" variant={u.role === 'coadmin' ? 'default' : 'outline'} onClick={() => setRole(u.id, "coadmin")}>Co-admin</Button>
-                    <Button size="sm" variant={u.role === 'admin' ? 'destructive' : 'outline'} onClick={() => setRole(u.id, "admin")}>Admin</Button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Users</CardTitle>
+                    <CardDescription>View and manage all user roles directly. This is the highest level of user administration.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 max-h-96 overflow-auto">
+                {users.length === 0 && <div className="text-sm text-muted-foreground p-4 text-center">No users found.</div>}
+                {users.map((u) => (
+                    <div key={u.id} className="flex items-center justify-between border rounded-md p-3">
+                    <div className="min-w-0">
+                        <div className="font-medium truncate">{u.email}</div>
+                        <div className="text-xs text-muted-foreground space-x-2">
+                        <span>role: <Badge variant="secondary">{u.role || "user"}</Badge></span>
+                        <span>status: <Badge variant={u.status === 'approved' ? 'default' : 'outline'}>{u.status || "pending"}</Badge></span>
+                        {u.isRoot && <Badge variant="destructive">Root</Badge>}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        {u.isRoot ? null : (
+                        <>
+                            <Button size="sm" variant={u.role === 'user' ? 'default' : 'outline'} onClick={() => setRole(u.id, "user")}>User</Button>
+                            <Button size="sm" variant={u.role === 'coadmin' ? 'default' : 'outline'} onClick={() => setRole(u.id, "coadmin")}>Co-admin</Button>
+                            <Button size="sm" variant={u.role === 'admin' ? 'destructive' : 'outline'} onClick={() => setRole(u.id, "admin")}>Admin</Button>
+                        </>
+                        )}
+                    </div>
+                    </div>
+                ))}
+                </CardContent>
+            </Card>
+            <RulesInspector />
+        </div>
 
-      <SystemHealth />
-
-      <RootRepair />
-
-      <RulesInspector />
-
-      <Card>
-        <CardHeader><CardTitle>Quick links</CardTitle></CardHeader>
-        <CardContent className="flex gap-3 flex-wrap">
-          <Link href="/admin"><Button variant="outline">Admin Dashboard</Button></Link>
-          <Link href="/onboarding"><Button variant="outline">Onboarding (test)</Button></Link>
-           <Link href="/dashboard"><Button variant="outline">User Dashboard</Button></Link>
-        </CardContent>
-      </Card>
+        <div className="space-y-6">
+            <SystemHealth />
+            <RootRepair />
+            <Card>
+                <CardHeader><CardTitle>Quick links</CardTitle></CardHeader>
+                <CardContent className="flex gap-3 flex-wrap">
+                <Button asChild variant="outline"><Link href="/admin">Admin Dashboard</Link></Button>
+                <Button asChild variant="outline"><Link href="/onboarding">Onboarding (test)</Link></Button>
+                <Button asChild variant="outline"><Link href="/dashboard">User Dashboard</Link></Button>
+                </CardContent>
+            </Card>
+        </div>
     </div>
   );
 }
-
