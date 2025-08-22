@@ -153,6 +153,24 @@ function RulesInspector() {
   );
 }
 
+function SystemHealth() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>System Health</CardTitle>
+                <CardDescription>
+                    Live status of the backend services.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">
+                    Health check endpoint not yet implemented.
+                </p>
+            </CardContent>
+        </Card>
+    )
+}
+
 
 export default function RootAdminPage() {
   const { user: authUser, loading: authLoading } = useAuth();
@@ -278,6 +296,8 @@ export default function RootAdminPage() {
           ))}
         </CardContent>
       </Card>
+
+      <SystemHealth />
 
       <RootRepair />
 

@@ -12,11 +12,13 @@ import { initializeApp } from "firebase-admin/app";
 import { getAuth, type UserRecord } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
-setGlobalOptions({
+const functionInitializationTimestamp = new Date();
+const globalOptions = {
   region: "asia-southeast1",
-  memory: "256MiB",
+  memory: "256MiB" as const,
   timeoutSeconds: 60,
-});
+};
+setGlobalOptions(globalOptions);
 
 initializeApp();
 const db = getFirestore();
@@ -136,4 +138,26 @@ export const ensureRootClaims = onCall(async (request) => {
   await addAuditLog(uid, email, "ensureRootClaims", "success", { targetUserId: uid });
 
   return { ok: true };
+});
+
+
+/** v2 callable: get function health */
+export const getFunctionHealth = onCall((request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+
+  const isRoot = request.auth.token.isRoot === true;
+  const isAdmin = request.auth.token.role === "admin" || isRoot;
+
+  if (!isAdmin) {
+    throw new HttpsError("permission-denied", "You must be an admin to call this function.");
+  }
+
+  return {
+    status: "ok",
+    initializationTimestamp: functionInitializationTimestamp.toISOString(),
+    region: globalOptions.region,
+    memory: globalOptions.memory,
+    runtime: process.version,
+    versions: process.versions,
+  };
 });
