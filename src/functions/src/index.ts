@@ -64,8 +64,8 @@ export const onAuthCreate = functionsV1
         profileCompleted: { status: false, timestamp: null },
         roleAssigned: { status: false, timestamp: null },
       },
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
     await db.doc(`users/${user.uid}`).set(base, { merge: true });
@@ -77,7 +77,7 @@ export const onAuthCreate = functionsV1
           role: "admin", 
           status: "approved", 
           isRoot: true, 
-          updatedAt: Date.now(),
+          updatedAt: FieldValue.serverTimestamp(),
           "onboardingSteps.profileCompleted": { status: true, timestamp: FieldValue.serverTimestamp() },
           "onboardingSteps.roleAssigned": { status: true, timestamp: FieldValue.serverTimestamp() },
         },
@@ -120,7 +120,7 @@ export const assignUserRole = onCall(async (request) => {
       { 
         role, 
         "onboardingSteps.roleAssigned": { status: true, timestamp: FieldValue.serverTimestamp() },
-        updatedAt: Date.now() 
+        updatedAt: FieldValue.serverTimestamp() 
       },
       { merge: true }
     );
@@ -141,6 +141,8 @@ export const ensureRootClaims = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
   
   const email = String(request.auth.token.email || "").toLowerCase();
+  const actor = { uid: request.auth.uid, email };
+  
   if (email !== ROOT_EMAIL) throw new HttpsError("permission-denied", "Root only.");
 
   const uid = request.auth.uid;
@@ -150,14 +152,14 @@ export const ensureRootClaims = onCall(async (request) => {
       role: "admin", 
       isRoot: true, 
       status: "approved", 
-      updatedAt: Date.now(),
+      updatedAt: FieldValue.serverTimestamp(),
       "onboardingSteps.profileCompleted": { status: true, timestamp: FieldValue.serverTimestamp() },
       "onboardingSteps.roleAssigned": { status: true, timestamp: FieldValue.serverTimestamp() },
     },
     { merge: true }
   );
 
-  await addAuditLog(uid, email, "ensureRootClaims", "success", { targetUserId: uid });
+  await addAuditLog(actor.uid, actor.email, "ensureRootClaims", "success", { targetUserId: uid });
 
   return { ok: true };
 });
@@ -183,3 +185,5 @@ export const getFunctionHealth = onCall((request) => {
     versions: process.versions,
   };
 });
+
+    

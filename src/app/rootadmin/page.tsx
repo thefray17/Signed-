@@ -153,6 +153,30 @@ function RulesInspector() {
 }
 
 function SystemHealth() {
+    const [health, setHealth] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+    const { toast } = useToast();
+
+    const checkHealth = async () => {
+        setLoading(true);
+        try {
+            const functions = getFunctions(app, "asia-southeast1");
+            const getHealth = httpsCallable(functions, "getFunctionHealth");
+            const result = await getHealth();
+            setHealth(result.data);
+        } catch (error: any) {
+            console.error("Error fetching system health:", error);
+            toast({
+                variant: "destructive",
+                title: "Health Check Failed",
+                description: error.message || "Could not fetch system health.",
+            });
+            setHealth({ status: "error", error: error.message });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -161,10 +185,15 @@ function SystemHealth() {
                     Live status of the backend services.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground">
-                    Health check endpoint not yet implemented.
-                </p>
+            <CardContent className="space-y-4">
+                 <Button onClick={checkHealth} disabled={loading}>
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Run Health Check"}
+                </Button>
+                {health && (
+                     <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto whitespace-pre-wrap">
+                        {JSON.stringify(health, null, 2)}
+                    </pre>
+                )}
             </CardContent>
         </Card>
     )
@@ -317,3 +346,4 @@ export default function RootAdminPage() {
   );
 }
 
+    
