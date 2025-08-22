@@ -1,0 +1,103 @@
+type User @table {
+  email: String!
+  displayName: String!
+  role: String!
+  office: Office
+  officeName: String
+  status: String!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+}
+
+type Office @table {
+  name: String!
+  code: String
+  createdBy: User!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+}
+
+type OfficeSignerUser @table(key: ["office", "user"]) {
+  office: Office!
+  user: User!
+}
+
+type OfficeSignerPosition @table(key: ["office", "position"]) {
+  office: Office!
+  position: String!
+}
+
+type OfficeRoleRequest @table {
+  requester: User!
+  requestedOffice: Office!
+  requestedOfficeName: String!
+  requestedRole: String!
+  status: String!
+  decidedBy: User
+  decidedAt: Timestamp
+  reason: String
+  createdAt: Timestamp!
+}
+
+type Document @table {
+  title: String!
+  type: String
+  description: String
+  owner: User!
+  ownerOffice: Office!
+  status: String!
+  currentStepIndex: Int!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+}
+
+type DocumentAttachment @table {
+  document: Document!
+  path: String!
+  name: String!
+  mimeType: String!
+  size: Int64!
+}
+
+type ApprovalStep @table {
+  document: Document!
+  step: Int!
+  office: Office!
+  officeName: String!
+  signerUser: User
+  signerPosition: String
+  status: String!
+  signedAt: Timestamp
+  signedBy: User
+}
+
+type Notification @table {
+  recipient: User
+  recipientRole: String
+  type: String!
+  payload: NotificationPayload
+  read: Boolean!
+  createdAt: Timestamp!
+}
+
+type NotificationPayload @table {
+  docId: UUID
+  fromOfficeId: UUID
+  toOfficeId: UUID
+  message: String
+  userId: UUID
+}
+
+type AuditLog @table {
+  actor: User!
+  action: String!
+  targetType: String!
+  targetId: UUID!
+  details: AuditLogDetails
+  createdAt: Timestamp!
+}
+
+type AuditLogDetails @table {
+  key: String!
+  value: String!
+}
