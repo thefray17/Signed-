@@ -228,5 +228,3 @@ export const getFunctionHealth = onCall((request) => {
     versions: process.versions,
   };
 });
-
-    

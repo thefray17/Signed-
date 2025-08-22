@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, orderBy, Timestamp } from "firebase/firestore";
+import { collection, query, getDocs, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase-app";
 import type { AuditLog } from "@/types";
 
@@ -38,7 +38,6 @@ export default function AuditLogsPage() {
                 const logsCollection = collection(db, "auditLogs");
                 const q = query(
                     logsCollection, 
-                    where("status", "==", "failure"), 
                     orderBy("timestamp", "desc")
                 );
 
@@ -66,12 +65,26 @@ export default function AuditLogsPage() {
         return formatDistanceToNow(date, { addSuffix: true });
     };
 
+    const renderDetails = (log: AuditLog) => {
+        const details = log.details;
+        if (log.action === 'assignUserRole' && log.status === 'success') {
+            return `Changed role from "${details.oldRole}" to "${details.requestedRole}" for user ${details.targetUserId?.substring(0,5)}...`
+        }
+        if (log.action === 'updateUserStatus' && log.status === 'success') {
+             return `Changed status from "${details.oldStatus}" to "${details.requestedStatus}" for user ${details.targetUserId?.substring(0,5)}...`
+        }
+        if (log.status === 'failure') {
+            return <span className="text-destructive text-xs font-mono">{details.error || "No details provided."}</span>
+        }
+        return <span className="text-xs font-mono">{JSON.stringify(details)}</span>
+    }
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Audit Logs: Failed Actions</CardTitle>
+                <CardTitle>System Audit Logs</CardTitle>
                 <CardDescription>
-                    A stream of recent failed administrative actions in the system.
+                    A stream of all administrative actions in the system.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -81,14 +94,15 @@ export default function AuditLogsPage() {
                             <TableHead>Timestamp</TableHead>
                             <TableHead>Actor</TableHead>
                             <TableHead>Action</TableHead>
-                            <TableHead>Error Details</TableHead>
+                             <TableHead>Status</TableHead>
+                            <TableHead>Details</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             Array.from({ length: 5 }).map((_, i) => (
                                 <TableRow key={i}>
-                                    <TableCell colSpan={4}>
+                                    <TableCell colSpan={5}>
                                         <Skeleton className="h-10 w-full" />
                                     </TableCell>
                                 </TableRow>
@@ -100,14 +114,19 @@ export default function AuditLogsPage() {
                                 <TableCell>
                                     <Badge variant="secondary">{log.action}</Badge>
                                 </TableCell>
-                                <TableCell className="text-destructive text-xs font-mono">
-                                    {log.details?.error || "No details provided."}
+                                <TableCell>
+                                     <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>
+                                        {log.status}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>
+                                    {renderDetails(log)}
                                 </TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center h-24">
-                                    No failed actions recorded.
+                                <TableCell colSpan={5} className="text-center h-24">
+                                    No actions have been recorded yet.
                                 </TableCell>
                             </TableRow>
                         )}
