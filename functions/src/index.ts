@@ -7,7 +7,8 @@ import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-setGlobalOptions({ region: "asia-southeast1", runtime: { memoryMiB: 256, timeoutSeconds: 60 } });
+setGlobalOptions({ region: "asia-southeast1", memoryMiB: 256, timeoutSeconds: 60 });
+
 initializeApp();
 const db = getFirestore();
 const auth = getAuth();
@@ -37,6 +38,7 @@ export const onauthcreate = onUserCreated(async (event: CloudEvent<UserRecord>) 
   }
 });
 
+
 /**
  * 2) Callable to assign roles.
  *    - Only root can assign "admin"
@@ -49,7 +51,6 @@ export const assignuserrole = onCall(async (request) => {
   }
 
   const caller = request.auth;
-  const callerEmail = String(caller.token.email || "").toLowerCase();
   const callerIsRoot = caller.token.isRoot === true;
   const callerIsAdmin = caller.token.role === "admin" || callerIsRoot;
 
