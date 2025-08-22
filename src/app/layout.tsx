@@ -1,7 +1,7 @@
 
 import "./globals.css";
 import React from "react";
-import { ClientProviders } from "@/components/providers/client-providers";          // wraps with your AuthProvider
+import { ClientProviders } from "@/components/providers/client-providers";
 import { SidebarContainer } from "./(app-shell)/SidebarContainer";
 import { UserNav } from "@/components/layout/user-nav";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
