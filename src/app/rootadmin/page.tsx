@@ -5,15 +5,19 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { httpsCallable, getFunctions } from "firebase/functions";
-import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query, doc, getDoc, setDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { db, app } from "@/lib/firebase-app";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2 } from "lucide-react";
 
 type UserRow = { id: string; email: string; role?: string; status?: string; isRoot?: boolean; createdAt?: any };
 
@@ -66,7 +70,7 @@ function RootRepair() {
         <div>
           <p className="text-sm text-muted-foreground mb-2">If you're having trouble accessing other pages, your token might be stale. Click this button to re-assert your root claims and refresh your session.</p>
           <Button onClick={run} disabled={busy}>
-            {busy ? "Working…" : "Re‑assert root & refresh token"}
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Re‑assert root & refresh token"}
           </Button>
           {msg && <div className="text-xs mt-2 text-muted-foreground">{msg}</div>}
         </div>
@@ -74,6 +78,76 @@ function RootRepair() {
           <h3 className="text-md font-semibold mb-2">Current Claims (Who Am I?)</h3>
           <WhoAmI />
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RulesInspector() {
+  const [path, setPath] = useState("users/some-test-uid");
+  const [operation, setOperation] = useState<'read' | 'write'>("read");
+  const [result, setResult] = useState<string | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+  const { toast } = useToast();
+
+  const handleTest = async () => {
+    if (!path) {
+        toast({
+            variant: "destructive",
+            title: "Path Required",
+            description: "Please enter a Firestore path to test.",
+        });
+        return;
+    }
+    setIsTesting(true);
+    setResult(null);
+    try {
+        const docRef = doc(db, path);
+        if (operation === 'read') {
+            await getDoc(docRef);
+            setResult(`✅ SUCCESS: Read operation for path "${path}" was allowed.`);
+        } else {
+            // Using set with merge to avoid overwriting and test write access
+            await setDoc(docRef, { test_field: `test_write_${Date.now()}` }, { merge: true });
+            setResult(`✅ SUCCESS: Write operation for path "${path}" was allowed.`);
+        }
+    } catch (error: any) {
+        console.error("Rules Inspector Error:", error);
+        setResult(`❌ FAILED: Operation on path "${path}" was denied.\n\nError: ${error.message}`);
+    } finally {
+        setIsTesting(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Rules Inspector</CardTitle>
+        <CardDescription>
+          Test Firestore security rules by attempting a read or write with your current user token.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+            <Label htmlFor="rules-path">Firestore Path</Label>
+            <Input id="rules-path" value={path} onChange={(e) => setPath(e.target.value)} placeholder="e.g., users/some-uid" />
+        </div>
+        <RadioGroup value={operation} onValueChange={(v: 'read' | 'write') => setOperation(v)} className="flex items-center space-x-4">
+             <div className="flex items-center space-x-2">
+                <RadioGroupItem value="read" id="op-read" />
+                <Label htmlFor="op-read">Read (get)</Label>
+            </div>
+             <div className="flex items-center space-x-2">
+                <RadioGroupItem value="write" id="op-write" />
+                <Label htmlFor="op-write">Write (set)</Label>
+            </div>
+        </RadioGroup>
+        <Button onClick={handleTest} disabled={isTesting}>
+            {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Run Test"}
+        </Button>
+        {result && (
+            <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto whitespace-pre-wrap">{result}</pre>
+        )}
       </CardContent>
     </Card>
   );
@@ -207,6 +281,8 @@ export default function RootAdminPage() {
 
       <RootRepair />
 
+      <RulesInspector />
+
       <Card>
         <CardHeader><CardTitle>Quick links</CardTitle></CardHeader>
         <CardContent className="flex gap-3 flex-wrap">
@@ -218,3 +294,4 @@ export default function RootAdminPage() {
     </div>
   );
 }
+
