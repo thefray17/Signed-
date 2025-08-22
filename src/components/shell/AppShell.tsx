@@ -12,7 +12,7 @@ export function AppShell({ user, children }: { user: AppUser; children: React.Re
     const sections = getNavForRole(user.role);
     const pathname = usePathname();
     const allItems = sections.flatMap(s => s.items);
-    const currentPage = allItems.find(item => item.href === pathname);
+    const currentPage = allItems.find(item => item.href === pathname || (item.href !== '/dashboard' && pathname.startsWith(item.href)));
     const pageTitle = currentPage?.label || user.role.charAt(0).toUpperCase() + user.role.slice(1) + " Panel";
 
     return (

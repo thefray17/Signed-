@@ -1,96 +1,79 @@
 
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import * as React from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { signInWithEmailAndPassword, getAuth } from "firebase/auth";
+import { app } from "@/lib/firebase-app";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase-client";
 import { Loader2 } from "lucide-react";
 
-const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-});
 
 export function LoginForm() {
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [remember, setRemember] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
   const router = useRouter();
+  const sp = useSearchParams();
+  const next = sp.get("next") || "/dashboard";
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const idToken = await userCredential.user.getIdToken();
+      const auth = getAuth(app);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await cred.user.getIdToken(true);
 
-      // Create the session cookie.
-      const res = await fetch("/api/auth/session", {
+      const r = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, remember }),
       });
 
-      if (res.ok) {
-        toast({
-          title: "Login Successful",
-          description: `Welcome back!`,
-        });
-        // The AuthRedirect component will handle routing after a page refresh.
-        // We force a refresh to ensure all server components re-render with the new session.
-        router.refresh();
-      } else {
-        throw new Error("Failed to create session.");
+      if (!r.ok) {
+        const data = await r.json();
+        throw new Error(data.error || "Failed to create session");
       }
       
-    } catch (error: any) {
-      let errorMessage = "An unknown error occurred. Please try again.";
-      // Firebase v9+ uses auth/invalid-credential for most login errors
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        errorMessage = 'Invalid email or password. Please try again.';
-      } else {
-        // For unexpected errors, it's still good to log them for debugging
-        console.error("Login Error:", error);
-        if (error.message) {
-          errorMessage = error.message;
-        }
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
+
+      // Navigate using server-rendered auth
+      router.replace(next);
+      router.refresh(); // This is important to force a re-fetch of server components
+    } catch (e: any) {
+      console.error(e);
+      let errorMessage = e?.message || "Login failed";
+      if (e.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password.';
       }
+      setErr(errorMessage);
       toast({
         variant: "destructive",
         title: "Login Failed",
         description: errorMessage,
       });
     } finally {
-        setIsLoading(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Login to Signed!</CardTitle>
@@ -99,40 +82,40 @@ export function LoginForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="name@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign In
+          <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    required
+                />
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="remember" checked={remember} onCheckedChange={(checked) => setRemember(!!checked)} />
+                <Label htmlFor="remember" className="text-sm font-normal">Remember me</Label>
+              </div>
+
+              {err && <p className="text-sm font-medium text-destructive">{err}</p>}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
               </Button>
             </form>
-          </Form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
             <Link href="/signup" className="underline">
