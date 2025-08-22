@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { adminApp } from "@/lib/firebase-admin-app";
 
 export const runtime = "nodejs"; // Admin SDK requires Node
+export const dynamic = "force-dynamic";
 
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
 const TWO_WEEKS_IN_SECONDS = 14 * ONE_DAY_IN_SECONDS;
