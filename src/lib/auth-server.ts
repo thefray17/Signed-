@@ -2,8 +2,15 @@
 import { cookies } from "next/headers";
 import { adminApp } from "@/lib/firebase-admin-app";
 import type { AppUser, UserRole } from "@/types";
+import { DecodedIdToken } from "firebase-admin/auth";
 
 const ROOT_ADMIN_EMAIL = process.env.ROOT_ADMIN_EMAIL;
+
+// Helper to check if a string is a JWT
+function isJwt(token: string): boolean {
+    const parts = token.split('.');
+    return parts.length === 3;
+}
 
 /** Why: single source of truth for user+role on server */
 export async function getCurrentUserWithRole(): Promise<AppUser | null> {
@@ -13,7 +20,20 @@ export async function getCurrentUserWithRole(): Promise<AppUser | null> {
 
   try {
     const auth = adminApp.auth();
-    const decoded = await auth.verifySessionCookie(session, true);
+    let decoded: DecodedIdToken;
+
+    // The session value could be a real session cookie or a raw ID token (in emulator)
+    // We can distinguish them by checking if the string is a valid JWT format.
+    const isEmulatorToken = isJwt(session);
+
+    if (isEmulatorToken) {
+        // In emulator mode, we verify the ID token directly on each request.
+        decoded = await auth.verifyIdToken(session);
+    } else {
+        // In production, we verify the session cookie.
+        decoded = await auth.verifySessionCookie(session, true);
+    }
+
     const uid = decoded.uid;
 
     // 1) custom claims
@@ -49,7 +69,7 @@ export async function getCurrentUserWithRole(): Promise<AppUser | null> {
       onboardingSteps: firestoreData?.onboardingSteps,
     };
   } catch (e) {
-    console.error("verifySessionCookie failed:", e);
+    console.error("Failed to verify session/token:", e);
     // Clear the invalid cookie
     cookies().delete('session');
     cookies().delete('__session');
