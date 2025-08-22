@@ -1,4 +1,2 @@
-// This file is deprecated. Content is now in /app/(dashboard)/admin/page.tsx
-export default function DeprecatedAdminPage() {
-  return null;
-}
+// This file is deprecated and its content has been moved to src/app/(dashboard)/admin/page.tsx to resolve routing conflicts.
+export default function DeprecatedAdminPage() { return null; }
