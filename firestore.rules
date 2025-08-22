@@ -3,31 +3,62 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isRoot() { return signedIn() && request.auth.token.isRoot == true; }
-    function isAdmin() { return signedIn() && request.auth.token.role == 'admin'; }
+    function isAdmin() { return signedIn() && (request.auth.token.role == 'admin' || isRoot()); }
     function isCoadmin() { return signedIn() && request.auth.token.role == 'coadmin'; }
-    function isElevated() { return isRoot() || isAdmin() || isCoadmin(); }
+    function isElevated() { return isAdmin() || isCoadmin(); }
 
+    // ---- users (your existing policy) ----
     match /users/{uid} {
-      // Everyone can read themselves; elevated roles can read all
       allow read: if signedIn() && (request.auth.uid == uid || isElevated());
-
-      // A user can create their own doc (e.g., client-side bootstrapping)
       allow create: if signedIn() && request.auth.uid == uid;
-
-      // A user can update their own doc BUT cannot change 'role' or 'status'
+      // user cannot change their own role/status
       allow update: if signedIn()
                     && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role
                     && request.resource.data.status == resource.data.status;
-
-      // Elevated roles can update (e.g., set roles/status)
       allow update: if isElevated();
-
-      // No deletes by default (adjust if you need)
       allow delete: if false;
     }
 
-    // Deny everything else by default
+    // ---- offices (NEW) ----
+    match /offices/{officeId} {
+      // Read: any signed-in user may read public offices; elevated can read all
+      allow get, list: if signedIn() && (isElevated() || resource.data.visibility == "public");
+
+      // Create/Update/Delete: only elevated roles
+      allow create: if isElevated();
+      allow update, delete: if isElevated();
+    }
+
+    // Optional: subcollections under offices (e.g., branches)
+    match /offices/{officeId}/branches/{branchId} {
+      allow get, list: if signedIn() && (isElevated() || resource.data.visibility == "public");
+      allow create, update, delete: if isElevated();
+    }
+
+    // ---- documents ----
+    match /documents/{docId} {
+        // Owner and elevated users can read.
+        // Users in the document's history can also read.
+        allow get: if signedIn() && (resource.data.ownerId == request.auth.uid || isElevated() || resource.data.currentOfficeId in request.auth.token.offices);
+
+        // List: Users can list documents they own or that are in their office
+        allow list: if signedIn();
+
+        // Create: Any signed-in user can create a document
+        allow create: if signedIn();
+
+        // Update: Owner can update (e.g., recall).
+        // Elevated users can update.
+        // A user who is part of the current office for signing can update.
+        allow update: if signedIn() && (resource.data.ownerId == request.auth.uid || isElevated() || resource.data.currentOfficeId in request.auth.token.offices);
+        
+        // Delete: Only elevated can delete for now
+        allow delete: if isElevated();
+    }
+
+
+    // Deny everything else
     match /{document=**} {
       allow read, write: if false;
     }

@@ -109,12 +109,16 @@ export default function OfficesPage() {
     
     useEffect(() => {
         fetchOffices();
-    }, [toast]);
+    }, []);
 
     async function onAddOfficeSubmit(values: z.infer<typeof addOfficeSchema>) {
         try {
             await addDoc(collection(db, "offices"), {
                 name: values.name,
+                visibility: "public",
+                status: "active",
+                createdAt: new Date(),
+                updatedAt: new Date(),
             });
             toast({
                 title: "Office Added",
