@@ -1,11 +1,20 @@
+
 "use client";
+
+/**
+ * AuthProvider with stable hook order.
+ * - All hooks are unconditional and declared in the same order every render.
+ * - No early returns after any hook has been called.
+ * - Resilient claims loading with optional retry.
+ */
+
 import * as React from "react";
 import type { User as FirebaseUser } from "firebase/auth";
-import { auth } from "@/lib/firebase-app";
 import { onIdTokenChanged, getIdTokenResult } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase-app";
 import type { AppUser } from "@/types";
+import { auth } from "@/lib/firebase-app";
 import { FileSignature } from "lucide-react";
 
 
@@ -22,51 +31,55 @@ export interface AuthContextType {
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-const isEmulator = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "true";
+// Avoid conditional logic for emulator in hook positions; use a constant only.
+const IS_EMULATOR = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "true";
 const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
+
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 async function getClaimsWithRetry(user: FirebaseUser): Promise<Claims> {
-  // Try without refresh first to avoid network churn.
+  // First try without refresh to avoid extra network calls.
   try {
     const res = await getIdTokenResult(user, false);
     return (res?.claims as Claims) ?? {};
   } catch (e: any) {
-    // If emulator is down or offline, avoid spamming.
-    if (isEmulator && /network/i.test(String(e?.message || e))) {
-      return {};
+    // If emulator or transient network issue, continue to limited retries.
+    const msg = String(e?.message || e);
+    if (!/network|timeout/i.test(msg) && !IS_EMULATOR) {
+      throw e;
     }
   }
 
-  // Retry with limited backoff, refreshing once.
-  const delays = [200, 500, 1000]; // ms
+  // Limited retries with one forced refresh.
+  const delays = [200, 500, 1000];
   for (let i = 0; i < delays.length; i++) {
     try {
-      const res = await getIdTokenResult(user, true); // refresh once during retries
+      const res = await getIdTokenResult(user, true);
       return (res?.claims as Claims) ?? {};
     } catch (e: any) {
-      // Network-only: keep trying; others: break early.
       const msg = String(e?.message || e);
-      if (!/network/i.test(msg) && !/timeout/i.test(msg)) {
+      if (!/network|timeout/i.test(msg)) {
         throw e;
       }
       await sleep(delays[i]);
     }
   }
-  // Give up but keep user signed-in; return empty claims to keep UI usable.
+  // Don’t fail hard; return empty claims to keep UI usable.
   return {};
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // 1–5) States always called in the same order.
   const [firebaseUser, setFirebaseUser] = React.useState<FirebaseUser | null>(null);
   const [user, setUser] = React.useState<AppUser | null>(null);
   const [claims, setClaims] = React.useState<Claims>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  // 6) Stable ref.
   const mounted = React.useRef(true);
   React.useEffect(() => {
     return () => {
@@ -74,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // 7) Stable callback to load user data (claims and firestore doc).
   const loadData = React.useCallback(async (fbUser: FirebaseUser) => {
     try {
         if (!mounted.current) return;
@@ -112,7 +126,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // 8) Public refresh function as a stable callback.
+  const refreshClaims = React.useCallback(async () => {
+    if (auth.currentUser) {
+      await loadData(auth.currentUser);
+    }
+  }, [loadData]);
 
+
+  // 9) Subscribe to auth token changes.
   React.useEffect(() => {
     const unsub = onIdTokenChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
@@ -124,28 +146,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (mounted.current) setLoading(false);
     });
+    return () => unsub();
+  }, [loadData]);
 
+  // 10) Optional keep-alive refresh (no conditional hooks).
+  React.useEffect(() => {
     const interval = setInterval(async () => {
-      if (auth.currentUser) {
-        try {
-          await auth.currentUser.getIdToken(!isEmulator);
-        } catch { /* ignore refresh errors */ }
+      if (!auth.currentUser) return;
+      try {
+        // Emulator tokens seldom expire; avoid forced refresh there.
+        await auth.currentUser.getIdToken(!IS_EMULATOR);
+      } catch {
+        /* non-fatal */
       }
-    }, 10 * 60 * 1000); // 10 minutes
+    }, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-    return () => {
-      unsub();
-      clearInterval(interval);
-    };
-  }, [loadData]);
+
+  // 11) Always memoize value; never conditional.
+  const value = React.useMemo<AuthContextType>(
+    () => ({ user, firebaseUser, claims, loading, error, refreshClaims }),
+    [user, firebaseUser, claims, loading, error, refreshClaims]
+  );
   
-  const refreshClaims = React.useCallback(async () => {
-    if (auth.currentUser) {
-      await loadData(auth.currentUser);
-    }
-  }, [loadData]);
-
-
   if (loading) {
     return (
         <div className="flex items-center justify-center h-screen bg-background">
@@ -159,24 +183,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         </div>
     )
   }
-  
-  const value: AuthContextType = React.useMemo(
-    () => ({ user, firebaseUser, claims, loading, error, refreshClaims }),
-    [user, firebaseUser, claims, loading, error, refreshClaims]
-  );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  // Never early-return before all hooks are called.
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+export function useAuth(): AuthContextType {
+  const ctx = React.useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
 
-export const useAuth = (): AuthContextType => {
-  const context = React.useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export default AuthProvider;
