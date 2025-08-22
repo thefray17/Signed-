@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { adminApp } from "@/lib/firebase-admin-app";
+import { adminAuth, adminDb } from "@/lib/firebase-admin-app";
 import type { AppUser, UserRole } from "@/types";
 import { DecodedIdToken } from "firebase-admin/auth";
 
@@ -10,7 +10,7 @@ export async function getCurrentUserWithRole(): Promise<AppUser | null> {
   const token = jar.get("session")?.value || jar.get("__session")?.value;
   if (!token) return null;
 
-  const auth = adminApp.auth();
+  const auth = adminAuth();
   let decoded: DecodedIdToken;
 
   // Try session cookie; fall back to raw ID token (emulator)
@@ -29,7 +29,7 @@ export async function getCurrentUserWithRole(): Promise<AppUser | null> {
   const uid = decoded.uid;
   let role: UserRole | null = (decoded as any)?.role ?? null;
 
-  const db = adminApp.firestore();
+  const db = adminDb();
   const userDoc = await db.doc(`users/${uid}`).get();
   const firestoreData = userDoc.exists() ? (userDoc.data() as AppUser) : null;
 

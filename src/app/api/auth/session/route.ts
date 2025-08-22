@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { adminApp } from "@/lib/firebase-admin-app";
+import { adminAuth, adminProjectId } from "@/lib/firebase-admin-app";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       return json(400, { error: "Missing/invalid idToken (must be JWT string)" });
     }
 
-    const auth = adminApp.auth();
+    const auth = adminAuth();
     const expiresIn = remember ? TWO_WEEKS : ONE_DAY;
 
     // Decode for diagnostics (aud/iss, token len)
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       len: idToken.length,
       aud: tokenAud,
       iss: tokenIss,
-      adminProjectId: adminApp.options.projectId,
+      adminProjectId: adminProjectId,
       emu: !!process.env.FIREBASE_AUTH_EMULATOR_HOST,
     });
 
@@ -66,12 +66,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Cross-check project/issuer to catch mismatches early
-    const adminProject = adminApp.options.projectId;
-    if (adminProject && tokenAud && adminProject !== tokenAud) {
-      return json(400, { error: `Token project mismatch: token.aud=${tokenAud} vs admin.projectId=${adminProject}` });
+    if (adminProjectId && tokenAud && adminProjectId !== tokenAud) {
+      return json(400, { error: `Token project mismatch: token.aud=${tokenAud} vs admin.projectId=${adminProjectId}` });
     }
-    if (adminProject && tokenIss && !String(tokenIss).endsWith("/" + adminProject)) {
-      return json(400, { error: `Token issuer mismatch: iss=${tokenIss} vs admin.projectId=${adminProject}` });
+    if (adminProjectId && tokenIss && !String(tokenIss).endsWith("/" + adminProjectId)) {
+      return json(400, { error: `Token issuer mismatch: iss=${tokenIss} vs admin.projectId=${adminProjectId}` });
     }
 
     const isEmu = !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
