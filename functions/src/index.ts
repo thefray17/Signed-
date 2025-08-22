@@ -1,16 +1,17 @@
-
-// v2: global options + HTTPS callables
+/**
+ * Clean v2 setup (global options + HTTPS callables) + v1 auth trigger.
+ * Region: asia-southeast1
+ */
 import { setGlobalOptions } from "firebase-functions/v2";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 
-// ✅ v1: explicit import for auth trigger chain (.region().auth.user().onCreate)
+// ⚠️ Explicit v1 import for auth trigger chain (.region().auth.user().onCreate())
 import * as functionsV1 from "firebase-functions/v1";
 
 import { initializeApp } from "firebase-admin/app";
 import { getAuth, type UserRecord } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-// ---- v2 global defaults (Singapore + resources)
 setGlobalOptions({
   region: "asia-southeast1",
   memory: "256MiB",
@@ -23,10 +24,7 @@ const auth = getAuth();
 
 const ROOT_EMAIL = "eballeskaye@gmail.com".toLowerCase();
 
-/**
- * v1 auth trigger (post-create), pinned to Singapore.
- * Using functionsV1 to avoid the v2 surface (which has no .region().auth.user())
- */
+/** v1 auth trigger (post-create), pinned to Singapore */
 export const onAuthCreate = functionsV1
   .region("asia-southeast1")
   .auth.user()
@@ -53,9 +51,7 @@ export const onAuthCreate = functionsV1
     }
   });
 
-/**
- * v2 callable examples (keep your logic as needed)
- */
+/** v2 callable: assign role */
 export const assignUserRole = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
 
@@ -68,15 +64,13 @@ export const assignUserRole = onCall(async (request) => {
     role?: "user" | "coadmin" | "admin";
   };
 
-  if (!targetUserId || !role) {
+  if (!targetUserId || !role)
     throw new HttpsError("invalid-argument", "Provide targetUserId and role.");
-  }
-  if (role === "admin" && !callerIsRoot) {
+
+  if (role === "admin" && !callerIsRoot)
     throw new HttpsError("permission-denied", "Only root can assign admin.");
-  }
-  if ((role === "coadmin" || role === "user") && !callerIsAdmin) {
+  if ((role === "coadmin" || role === "user") && !callerIsAdmin)
     throw new HttpsError("permission-denied", "Only admin/root can assign this role.");
-  }
 
   await auth.setCustomUserClaims(targetUserId, { role });
   await db.doc(`users/${targetUserId}`).set(
@@ -86,6 +80,7 @@ export const assignUserRole = onCall(async (request) => {
   return { ok: true };
 });
 
+/** v2 callable: ensure root */
 export const ensureRootClaims = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
   const email = String(request.auth.token.email || "").toLowerCase();
