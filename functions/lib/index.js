@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensurerootclaims = exports.assignuserrole = exports.onauthcreate = void 0;
 const v2_1 = require("firebase-functions/v2");
-const identity_1 = require("firebase-functions/v2/identity");
+const auth_1 = require("firebase-functions/v2/auth");
 const https_1 = require("firebase-functions/v2/https");
 const app_1 = require("firebase-admin/app");
-const auth_1 = require("firebase-admin/auth");
+const auth_2 = require("firebase-admin/auth");
 const firestore_1 = require("firebase-admin/firestore");
 (0, v2_1.setGlobalOptions)({
     region: "asia-southeast1",
@@ -13,10 +13,10 @@ const firestore_1 = require("firebase-admin/firestore");
 (0, app_1.initializeApp)();
 const ROOT = "eballeskaye@gmail.com";
 /** Make root admin + isRoot on first auth create */
-exports.onauthcreate = (0, identity_1.onUserCreated)(async (event) => {
+exports.onauthcreate = (0, auth_1.onUserCreated)(async (event) => {
     const user = event.data;
     const db = (0, firestore_1.getFirestore)();
-    const auth = (0, auth_1.getAuth)();
+    const auth = (0, auth_2.getAuth)();
     const base = {
         email: user.email ?? "",
         role: "user",
@@ -42,7 +42,7 @@ exports.assignuserrole = (0, https_1.onCall)(async (request) => {
     const { targetUserId, role } = (request.data || {});
     if (!targetUserId || !role)
         throw new https_1.HttpsError("invalid-argument", "targetUserId and role are required");
-    const auth = (0, auth_1.getAuth)();
+    const auth = (0, auth_2.getAuth)();
     const callerEmail = String(request.auth.token.email || "").toLowerCase();
     const isRootCaller = !!request.auth.token.isRoot || callerEmail === ROOT;
     const callerRole = String(request.auth.token.role || "");
@@ -68,7 +68,7 @@ exports.ensurerootclaims = (0, https_1.onCall)(async (request) => {
         throw new https_1.HttpsError("permission-denied", "Root only");
     }
     const uid = request.auth.uid;
-    await (0, auth_1.getAuth)().setCustomUserClaims(uid, { role: "admin", isRoot: true });
+    await (0, auth_2.getAuth)().setCustomUserClaims(uid, { role: "admin", isRoot: true });
     await (0, firestore_1.getFirestore)().doc(`users/${uid}`).set({ role: "admin", isRoot: true, status: "approved", updatedAt: Date.now() }, { merge: true });
     return { ok: true };
 });
