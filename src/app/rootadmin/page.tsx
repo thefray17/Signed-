@@ -333,17 +333,7 @@ export default function RootAdminPage() {
         <div className="space-y-6">
             <SystemHealth />
             <RootRepair />
-            <Card>
-                <CardHeader><CardTitle>Quick links</CardTitle></CardHeader>
-                <CardContent className="flex gap-3 flex-wrap">
-                <Button asChild variant="outline"><Link href="/admin">Admin Dashboard</Link></Button>
-                <Button asChild variant="outline"><Link href="/onboarding">Onboarding (test)</Link></Button>
-                <Button asChild variant="outline"><Link href="/dashboard">User Dashboard</Link></Button>
-                </CardContent>
-            </Card>
         </div>
     </div>
   );
 }
-
-    
