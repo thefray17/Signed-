@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -9,34 +8,27 @@ service cloud.firestore {
     function isElevated() { return isRoot() || isAdmin() || isCoadmin(); }
 
     match /users/{uid} {
+      // Everyone can read themselves; elevated roles can read all
       allow read: if signedIn() && (request.auth.uid == uid || isElevated());
-      // Let users update their own profile during onboarding, but not their role/status
-      allow update: if signedIn() && request.auth.uid == uid
-                    && !(request.resource.data.role is string)
-                    && !(request.resource.data.status is string)
-                    && !(request.resource.data.isRoot is bool);
 
-      // Only functions can create users or change sensitive fields like roles.
-      allow create, delete: if false;
+      // A user can create their own doc (e.g., client-side bootstrapping)
+      allow create: if signedIn() && request.auth.uid == uid;
+
+      // A user can update their own doc BUT cannot change 'role' or 'status'
+      allow update: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.status == resource.data.status;
+
+      // Elevated roles can update (e.g., set roles/status)
+      allow update: if isElevated();
+
+      // No deletes by default (adjust if you need)
+      allow delete: if false;
     }
 
-    match /offices/{id} {
-      allow read: if signedIn();
-      // Only admins can create/update offices
-      allow write: if isRoot() || isAdmin();
-    }
-    
-    match /documents/{docId} {
-      // Users can create documents and read documents they own or that are in their office
-      allow create: if signedIn();
-      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || resource.data.currentOfficeId == request.auth.token.office);
-      
-      // All other updates must go through a function
-      allow update, delete: if false;
-    }
-
-    // Default deny all other collections
-    match /{path=**}/documents/{docId} {
+    // Deny everything else by default
+    match /{document=**} {
       allow read, write: if false;
     }
   }
