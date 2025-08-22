@@ -1,7 +1,7 @@
 
 import { Timestamp } from "firebase/firestore";
 
-export type UserRole = 'user' | 'coadmin' | 'admin';
+export type UserRole = 'user' | 'coadmin' | 'admin' | 'root';
 export type UserStatus = 'pending' | 'approved' | 'rejected' | 'disabled';
 
 export interface OnboardingSteps {
@@ -24,7 +24,7 @@ export interface AppUser {
   office: string | null; // This will be an office ID
   officeName?: string; // Add office name for convenience
   status: UserStatus;
-  onboardingSteps: OnboardingSteps;
+  onboardingSteps?: OnboardingSteps;
   isRoot?: boolean;
 }
 

@@ -15,8 +15,7 @@ export async function getCurrentUserWithRole(): Promise<AppUser | null> {
         const db = adminApp.firestore();
 
         const isRoot = decodedClaims.isRoot || decodedClaims.email?.toLowerCase() === ROOT_ADMIN_EMAIL;
-        let role = isRoot ? 'root' : decodedClaims.role || 'user';
-
+        
         const userDoc = await db.collection('users').doc(decodedClaims.uid).get();
         
         if (!userDoc.exists) {
@@ -26,9 +25,10 @@ export async function getCurrentUserWithRole(): Promise<AppUser | null> {
                 uid: decodedClaims.uid,
                 email: decodedClaims.email || null,
                 displayName: decodedClaims.name || null,
-                role: role,
+                role: isRoot ? 'root' : (decodedClaims.role as 'admin' | 'coadmin' | 'user') || 'user',
                 status: 'pending',
                 office: null,
+                isRoot: isRoot
             } as AppUser;
         }
 
