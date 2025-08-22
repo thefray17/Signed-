@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { httpsCallable, getFunctions } from "firebase/functions";
 import { db, app } from "@/lib/firebase-app";
 import { getAuth } from "firebase/auth";
 import type { AppUser } from "@/types";
+import Papa from "papaparse";
 
 import {
   Card,
@@ -43,10 +44,11 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Loader2 } from "lucide-react";
+import { MoreHorizontal, Loader2, Upload, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
+import { Input } from "@/components/ui/input";
 
 export default function UsersPage() {
     const { user: currentUser } = useAuth();
@@ -55,7 +57,10 @@ export default function UsersPage() {
     const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
     const [newRole, setNewRole] = useState<'user' | 'coadmin' | 'admin' | null>(null);
     const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+    const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [csvFile, setCsvFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -112,15 +117,101 @@ export default function UsersPage() {
             setIsSubmitting(false);
         }
     };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files[0]) {
+            const file = event.target.files[0];
+            if (file.type !== "text/csv") {
+                toast({
+                    variant: "destructive",
+                    title: "Invalid File Type",
+                    description: "Please upload a valid CSV file.",
+                });
+                return;
+            }
+            setCsvFile(file);
+        }
+    };
+    
+    const handleBulkInvite = () => {
+        if (!csvFile) {
+            toast({
+                variant: "destructive",
+                title: "No File Selected",
+                description: "Please select a CSV file to upload.",
+            });
+            return;
+        }
+
+        // Placeholder for future implementation
+        console.log("Parsing and sending invites for:", csvFile.name);
+        Papa.parse(csvFile, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                console.log("Parsed CSV data:", results.data);
+                // Here you would call a cloud function with results.data
+                toast({
+                    title: "Processing Invites",
+                    description: "Your bulk invitation is being processed.",
+                });
+                setIsInviteDialogOpen(false);
+                setCsvFile(null);
+            },
+            error: (error: any) => {
+                 toast({
+                    variant: "destructive",
+                    title: "CSV Parsing Error",
+                    description: error.message,
+                });
+            }
+        });
+    };
     
   return (
     <>
     <Card>
       <CardHeader>
-        <CardTitle>Manage Users</CardTitle>
-        <CardDescription>
-          View and manage all user accounts in the system.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+            <div>
+                <CardTitle>Manage Users</CardTitle>
+                <CardDescription>
+                  View, manage, and invite all user accounts in the system.
+                </CardDescription>
+            </div>
+            <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm" className="gap-1" aria-label="Bulk Invite Users">
+                        <UserPlus className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                            Bulk Invite
+                        </span>
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Bulk Invite Users</DialogTitle>
+                        <DialogDescription>
+                            Upload a CSV file with user emails and full names to invite them. The file must contain 'email' and 'fullName' columns.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid w-full max-w-sm items-center gap-1.5">
+                            <Label htmlFor="csv-upload">CSV File</Label>
+                            <Input id="csv-upload" type="file" accept=".csv" ref={fileInputRef} onChange={handleFileChange} />
+                        </div>
+                        {csvFile && <p className="text-sm text-muted-foreground">Selected file: {csvFile.name}</p>}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleBulkInvite} disabled={!csvFile}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload and Send Invites
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
         <Table>
