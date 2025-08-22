@@ -12,6 +12,7 @@ import { AppUser } from "@/types";
 const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
 
 const publicRoutes = ['/login', '/signup', '/'];
+const authRoutes = ['/login', '/signup'];
 
 export default function AuthRedirect() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function AuthRedirect() {
         let tokenResult = await getIdTokenResult(user, true);
         const email = (user.email || "").toLowerCase();
         
-        // Auto-heal logic
+        // Auto-heal logic for root user
         if (email === ROOT_ADMIN_EMAIL && !tokenResult.claims.isRoot) {
           try {
             const functions = getFunctions(app, "asia-southeast1");
@@ -46,12 +47,6 @@ export default function AuthRedirect() {
         const role = (claims.role as string) || "";
         const isRoot = !!claims.isRoot || email === ROOT_ADMIN_EMAIL;
 
-        if (publicRoutes.includes(pathname)) {
-            if (isRoot) return router.replace("/rootadmin");
-            if (role === "admin") return router.replace("/admin");
-            if (role === "coadmin") return router.replace("/coadmin");
-        }
-
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
 
@@ -63,24 +58,62 @@ export default function AuthRedirect() {
         }
 
         const userData = userDoc.data() as AppUser;
+        const isAuthRoute = authRoutes.includes(pathname);
 
-        // The logic below handles routing for authenticated users.
-        // It's important to check the *current* path to avoid redirect loops.
+        // --- Routing for AUTHENTICATED users ---
 
+        // If user is on login/signup page, redirect them away
+        if (isAuthRoute) {
+            if (isRoot) return router.replace("/rootadmin");
+            if (role === "admin") return router.replace("/admin");
+            if (role === "coadmin") return router.replace("/coadmin");
+            if (userData.status === "approved") return router.replace("/dashboard");
+             return router.replace("/onboarding"); // Default redirect if state is unclear
+        }
+
+        // Standard user routing logic based on their profile status
+        if (userData.status === 'pending') {
+            const profileCompleted = userData.onboardingSteps?.profileCompleted?.status;
+            if (!profileCompleted) {
+                if (pathname !== '/onboarding') router.replace('/onboarding');
+            } else {
+                if (pathname !== '/pending-approval') router.replace('/pending-approval');
+            }
+            return; // Exit here for pending users
+        }
+
+        if (userData.status === 'rejected') {
+            // Log out and redirect to login for rejected users.
+            if (pathname !== '/login') {
+                await auth.signOut();
+                router.replace('/login');
+            }
+            return; // Exit here for rejected users
+        }
+
+        // --- Role-based access control for APPROVED users ---
+        
         // Root user can go anywhere, but their home is /rootadmin.
-        // Don't redirect them if they are already on an allowed page.
         if (isRoot) {
+            // They can access /rootadmin, /admin, and /dashboard.
             if (pathname.startsWith('/rootadmin') || pathname.startsWith('/admin') || pathname.startsWith('/dashboard')) {
                 return; // Already in an authorized area
             }
-             router.replace('/rootadmin');
-             return;
+            // For any other authenticated page, redirect to their main dashboard.
+            router.replace('/rootadmin');
+            return;
         }
         
         // Admin user routing
         if (role === 'admin') {
+            // They can access /admin and /dashboard.
             if (pathname.startsWith('/admin') || pathname.startsWith('/dashboard')) {
                 return; // Already in an authorized area for admin
+            }
+             // Block access to /rootadmin
+            if (pathname.startsWith('/rootadmin')) {
+                router.replace('/admin');
+                return;
             }
             router.replace('/admin');
             return;
@@ -88,37 +121,38 @@ export default function AuthRedirect() {
         
         // Co-admin user routing
         if (role === 'coadmin') {
-            if (pathname.startsWith('/coadmin') || pathname.startsWith('/admin') || pathname.startsWith('/dashboard')) {
+            if (pathname.startsWith('/admin') || pathname.startsWith('/dashboard')) {
                  return; // Already in an authorized area for co-admin
+            }
+             // Block access to /rootadmin
+            if (pathname.startsWith('/rootadmin')) {
+                router.replace('/admin');
+                return;
             }
              router.replace('/coadmin');
              return;
         }
 
-        // Standard user routing logic based on their status
-        switch (userData.status) {
-            case 'approved':
-                if (!pathname.startsWith('/dashboard')) router.replace('/dashboard');
-                break;
-            case 'pending':
-                if (!userData.onboardingSteps.profileCompleted.status) {
-                    if (pathname !== '/onboarding') router.replace('/onboarding');
-                } else {
-                    if (pathname !== '/pending-approval') router.replace('/pending-approval');
-                }
-                break;
-            case 'rejected':
-                 // Log out and redirect to login for rejected users.
-                if (pathname !== '/login') {
-                    await auth.signOut();
-                    router.replace('/login');
-                }
-                break;
-            default:
-                 // Default to onboarding if status is unknown or missing.
-                if (pathname !== '/onboarding') router.replace('/onboarding');
-                break;
+        // Standard 'user' role routing
+        if (role === 'user' && userData.status === 'approved') {
+            if (pathname.startsWith('/dashboard')) {
+                return; // Already in their dashboard
+            }
+             // Block access to admin areas
+            if (pathname.startsWith('/admin') || pathname.startsWith('/rootadmin')) {
+                router.replace('/dashboard');
+                return;
+            }
+            if (!pathname.startsWith('/dashboard')) router.replace('/dashboard');
+            return;
         }
+        
+        // Fallback for any unhandled case
+        // This can happen if claims/db data is inconsistent.
+        console.warn("Unhandled auth redirection case. Defaulting to login.");
+        await auth.signOut();
+        router.replace('/login');
+
 
       } catch (error) {
         console.error("Error during auth redirection:", error);
