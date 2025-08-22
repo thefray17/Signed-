@@ -1,5 +1,5 @@
 import { setGlobalOptions } from "firebase-functions/v2";
-import { onUserCreated } from "firebase-functions/v2/identity";
+import { onUserCreated } from "firebase-functions/v2/auth";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
