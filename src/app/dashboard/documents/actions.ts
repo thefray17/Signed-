@@ -1,9 +1,9 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { doc, updateDoc, getDoc, Timestamp } from "firebase/firestore";
 import { z } from "zod";
-import { db } from "@/lib/firebase-app";
+import { adminApp } from "@/lib/firebase-admin-app";
 import type { Document as DocumentType, DocumentLog } from "@/types";
 
 const updateStatusSchema = z.object({
@@ -22,71 +22,79 @@ export async function updateDocumentStatusAction(values: z.infer<typeof updateSt
   }
 
   const { docId, newStatus, userId, userDisplayName, userOfficeId } = validatedFields.data;
-  const docRef = doc(db, "documents", docId);
+  
+  const db = adminApp.firestore();
+  const Timestamp = adminApp.firestore.Timestamp;
+
 
   try {
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) {
-      return { error: "Document not found." };
-    }
-
-    const document = docSnap.data() as DocumentType;
-    const history: DocumentLog[] = document.history || [];
-    const now = Timestamp.now();
-
-    // Find the index of the current step in the workflow history
-    const currentStepIndex = history.findIndex(
-      (log) => log.officeId === userOfficeId && (log.status === 'in_transit' || log.status === 'pending_transit')
-    );
-
-    if (currentStepIndex === -1) {
-      return { error: "Current workflow step could not be determined." };
-    }
-
-    // Update the log for the current step
-    history[currentStepIndex].status = newStatus;
-    history[currentStepIndex].timestamp = now;
-    history[currentStepIndex].notes = newStatus === 'signed' ? `Signed by ${userDisplayName}.` : `Rejected by ${userDisplayName}.`;
-    history[currentStepIndex].signedBy = { uid: userId, name: userDisplayName };
+    await db.runTransaction(async (tx) => {
+      const ref = db.doc(`documents/${docId}`);
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error("Document not found.");
 
 
-    let finalStatus = document.currentStatus;
-    let finalOfficeId = document.currentOfficeId;
+      const document = snap.data() as DocumentType;
+      const history = Array.isArray(document.history) ? (document.history as DocumentLog[]) : [];
 
-    if (newStatus === 'rejected') {
-      finalStatus = 'rejected';
-      // The document stops here unless a resubmission process is implemented.
-    } else if (newStatus === 'signed') {
-      const nextStepIndex = currentStepIndex + 1;
-      const nextStep = history[nextStepIndex];
 
-      if (nextStep) {
-        // There is a next step, so move it to 'in_transit'
-        finalStatus = 'in_transit';
-        finalOfficeId = nextStep.officeId;
-        history[nextStepIndex].status = 'in_transit';
-        history[nextStepIndex].timestamp = now;
-        history[nextStepIndex].notes = `Forwarded for signature.`;
-      } else {
-        // This was the last step
-        finalStatus = 'completed';
-        finalOfficeId = userOfficeId; // Stays at the last office
+      const currentStepIndex = history.findIndex(
+      (h) => h.status === "in_transit" && h.officeId === userOfficeId
+      );
+      if (currentStepIndex === -1) throw new Error("No in-transit step for your office.");
+
+
+      const now = Timestamp.now();
+
+
+      // Update current step
+      history[currentStepIndex] = {
+      ...history[currentStepIndex],
+      status: newStatus,
+      timestamp: now,
+      notes: newStatus === "signed" ? `Signed by ${userDisplayName}.` : `Rejected by ${userDisplayName}.`,
+      signedBy: { uid: userId, name: userDisplayName },
+      };
+
+
+      let finalStatus = document.currentStatus;
+      let finalOfficeId = document.currentOfficeId;
+
+
+      if (newStatus === "rejected") {
+        finalStatus = "rejected";
+      } else if (newStatus === "signed") {
+        const nextStepIndex = currentStepIndex + 1;
+        const nextStep = history[nextStepIndex];
+        if (nextStep) {
+          finalStatus = "in_transit";
+          finalOfficeId = nextStep.officeId;
+          history[nextStepIndex] = {
+            ...nextStep,
+            status: "in_transit",
+            timestamp: now,
+            notes: "Forwarded for signature.",
+          } as DocumentLog;
+        } else {
+          finalStatus = "completed";
+          finalOfficeId = userOfficeId; // stays at last office
+        }
       }
-    }
 
-    await updateDoc(docRef, {
-      currentStatus: finalStatus,
-      currentOfficeId: finalOfficeId,
-      history: history,
+
+      tx.update(ref, {
+        currentStatus: finalStatus,
+        currentOfficeId: finalOfficeId,
+        history,
+      });
     });
-    
-    // Revalidate paths to reflect the changes immediately
+
+
     revalidatePath("/dashboard/documents");
     revalidatePath("/dashboard");
-
-    return { data: { success: true }, error: null };
-  } catch (error) {
+    return { data: { success: true }, error: null } as const;
+  } catch (error: any) {
     console.error("Error updating document status:", error);
-    return { error: "Could not update the document status. Please try again." };
+    return { error: error.message || "Could not update the document status. Please try again." } as const;
   }
 }
