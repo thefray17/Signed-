@@ -65,7 +65,8 @@ export default function RootAdminPage() {
 
   async function setRole(uid: string, role: "user" | "coadmin" | "admin") {
     try {
-        const fn = httpsCallable(getFunctions(app), "assignUserRole");
+        const functions = getFunctions(app, "asia-southeast1");
+        const fn = httpsCallable(functions, "assignUserRole");
         await fn({ targetUserId: uid, role });
         setUsers((prev) =>
           prev.map((u) => (u.id === uid ? { ...u, role, isRoot: false } : u))
@@ -74,6 +75,7 @@ export default function RootAdminPage() {
           title: "Role Updated",
           description: `User role has been successfully changed to ${'\'\'\''}${role}${'\'\'\''}.`,
         });
+        await auth.currentUser?.getIdToken(true);
     } catch (error: any) {
         console.error("Failed to set role:", error);
         toast({

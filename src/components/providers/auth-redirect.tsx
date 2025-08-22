@@ -5,7 +5,7 @@ import { onIdTokenChanged, getIdTokenResult } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { httpsCallable, getFunctions } from "firebase/functions";
 import { auth } from "@/lib/firebase-client";
-import { db } from "@/lib/firebase-app";
+import { db, app } from "@/lib/firebase-app";
 import { useRouter, usePathname } from "next/navigation";
 import { AppUser } from "@/types";
 
@@ -34,7 +34,8 @@ export default function AuthRedirect() {
         // Auto-heal logic
         if (email === ROOT_ADMIN_EMAIL && !tokenResult.claims.isRoot) {
           try {
-            const ensure = httpsCallable(getFunctions(), "ensureRootClaims");
+            const functions = getFunctions(app, "asia-southeast1");
+            const ensure = httpsCallable(functions, "ensureRootClaims");
             await ensure({});
             tokenResult = await getIdTokenResult(user, true); // Force-reload token
           } catch (e) {

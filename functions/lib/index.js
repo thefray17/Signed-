@@ -1,19 +1,25 @@
+/**
+ * Clean v2 setup (global options + HTTPS callables) + v1 auth trigger.
+ * Region: asia-southeast1
+ */
 import { setGlobalOptions } from "firebase-functions/v2";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as functions from "firebase-functions"; // v1 surface for auth trigger
+// ⚠️ Explicit v1 import for auth trigger chain (.region().auth.user().onCreate())
+import * as functionsV1 from "firebase-functions/v1";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 setGlobalOptions({
     region: "asia-southeast1",
     memory: "256MiB",
-    timeoutSeconds: 60
+    timeoutSeconds: 60,
 });
 initializeApp();
 const db = getFirestore();
 const auth = getAuth();
 const ROOT_EMAIL = "eballeskaye@gmail.com".toLowerCase();
-export const onAuthCreate = functions
+/** v1 auth trigger (post-create), pinned to Singapore */
+export const onAuthCreate = functionsV1
     .region("asia-southeast1")
     .auth.user()
     .onCreate(async (user) => {
@@ -32,6 +38,7 @@ export const onAuthCreate = functions
         await db.doc(`users/${user.uid}`).set({ role: "admin", status: "approved", isRoot: true, updatedAt: Date.now() }, { merge: true });
     }
 });
+/** v2 callable: assign role */
 export const assignUserRole = onCall(async (request) => {
     if (!request.auth)
         throw new HttpsError("unauthenticated", "Sign in first.");
@@ -49,6 +56,7 @@ export const assignUserRole = onCall(async (request) => {
     await db.doc(`users/${targetUserId}`).set({ role, updatedAt: Date.now() }, { merge: true });
     return { ok: true };
 });
+/** v2 callable: ensure root */
 export const ensureRootClaims = onCall(async (request) => {
     if (!request.auth)
         throw new HttpsError("unauthenticated", "Sign in first.");
