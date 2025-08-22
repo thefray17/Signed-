@@ -28,6 +28,10 @@ export interface AppUser {
   isRoot?: boolean;
 }
 
+export function isValidRole(v: unknown): v is UserRole {
+  return v === "root" || v === "admin" || v === "coadmin" || v === "user";
+}
+
 export interface Office {
   id: string;
   name: string;

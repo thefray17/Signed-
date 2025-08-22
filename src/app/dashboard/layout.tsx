@@ -1,17 +1,8 @@
 
 import type { ReactNode } from "react";
-import { redirect } from "next/navigation";
-import { getCurrentUserWithRole } from "@/lib/auth-server";
-import { AppShell } from "@/components/shell/AppShell";
 
-
-export const dynamic = "force-dynamic"; // ensures fresh role on nav changes if session updates
-
-
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
-    const user = await getCurrentUserWithRole();
-    if (!user) {
-        redirect("/login");
-    }
-    return <AppShell user={user}>{children}</AppShell>;
+// This layout is now handled by the route group at src/app/(dashboard)/layout.tsx
+// This file can be deleted, but we'll keep it empty to be safe.
+export default function DashboardLayout({ children }: { children: ReactNode }) {
+    return <>{children}</>;
 }

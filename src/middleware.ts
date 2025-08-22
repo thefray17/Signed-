@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 /** Why: early redirect to login if hitting /dashboard without a session cookie */
 export function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith("/dashboard")) {
+  if (req.nextUrl.pathname.startsWith("/dashboard") || req.nextUrl.pathname.startsWith("/admin")) {
     const hasSession = req.cookies.get("__session") || req.cookies.get("session");
     if (!hasSession) {
       const login = new URL("/login", req.url);
@@ -14,4 +14,4 @@ export function middleware(req: NextRequest) {
   }
   return NextResponse.next();
 }
-export const config = { matcher: ["/dashboard/:path*"] };
+export const config = { matcher: ["/dashboard/:path*", "/admin/:path*"] };

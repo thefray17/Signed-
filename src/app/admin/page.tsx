@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-
-export default function AdminPage() {
-    redirect('/admin/approvals');
+// This file is deprecated. Content is now in /app/(dashboard)/admin/page.tsx
+export default function DeprecatedAdminPage() {
+  return null;
 }

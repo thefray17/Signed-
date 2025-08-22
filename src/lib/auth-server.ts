@@ -1,57 +1,50 @@
 
 import { cookies } from "next/headers";
-import { adminApp } from "./firebase-admin-app";
-import type { AppUser } from "@/types";
+import { adminApp } from "@/lib/firebase-admin-app";
+import type { AppUser, UserRole } from "@/types";
 
-const SESSION_COOKIE_NAME = "__session"; 
-const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
+const ROOT_ADMIN_EMAIL = process.env.ROOT_ADMIN_EMAIL;
 
+/** Why: single source of truth for user+role on server */
 export async function getCurrentUserWithRole(): Promise<AppUser | null> {
-    const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
-    if (!sessionCookie) return null;
+  const sessionCookie =
+    cookies().get("__session")?.value || cookies().get("session")?.value;
+  if (!sessionCookie) return null;
+  
+  try {
+    const auth = adminApp.auth();
+    const decoded = await auth.verifySessionCookie(sessionCookie, true);
+    const uid = decoded.uid;
+    
+    const db = adminApp.firestore();
+    const userDoc = await db.doc(`users/${uid}`).get();
+    const firestoreData = userDoc.exists() ? (userDoc.data() as AppUser) : null;
 
-    try {
-        const decodedClaims = await adminApp.auth().verifySessionCookie(sessionCookie, true);
-        const db = adminApp.firestore();
+    const email = decoded.email?.toLowerCase() ?? "";
+    const isRoot = !!decoded.isRoot || (ROOT_ADMIN_EMAIL && email === ROOT_ADMIN_EMAIL.toLowerCase());
 
-        const isRoot = decodedClaims.isRoot || decodedClaims.email?.toLowerCase() === ROOT_ADMIN_EMAIL;
-        
-        const userDoc = await db.collection('users').doc(decodedClaims.uid).get();
-        
-        if (!userDoc.exists) {
-            // This might happen with a delay between auth creation and firestore doc creation.
-            // We can return a temporary user object based on claims alone.
-            return {
-                uid: decodedClaims.uid,
-                email: decodedClaims.email || null,
-                displayName: decodedClaims.name || null,
-                role: isRoot ? 'root' : (decodedClaims.role as 'admin' | 'coadmin' | 'user') || 'user',
-                status: 'pending',
-                office: null,
-                isRoot: isRoot
-            } as AppUser;
-        }
-
-        const firestoreData = userDoc.data() as AppUser;
-
-        // Final role determination: claim is authoritative, but firestore is a good fallback.
-        // isRoot check is the ultimate override.
-        const finalRole = isRoot ? 'root' : (decodedClaims.role || firestoreData.role || 'user');
-
-        return {
-            uid: decodedClaims.uid,
-            email: decodedClaims.email!,
-            displayName: firestoreData.displayName || decodedClaims.name,
-            role: finalRole,
-            isRoot: isRoot,
-            status: firestoreData.status,
-            office: firestoreData.office,
-            officeName: firestoreData.officeName,
-            onboardingSteps: firestoreData.onboardingSteps,
-        };
-
-    } catch (error) {
-        console.error("Failed to verify session cookie or fetch user role:", error);
-        return null;
+    let role: UserRole = 'user'; // Default role
+    if (isRoot) {
+      role = 'root';
+    } else if (decoded.role && typeof decoded.role === 'string') {
+      role = decoded.role as UserRole;
+    } else if (firestoreData?.role) {
+      role = firestoreData.role;
     }
+    
+    return {
+      uid,
+      email: decoded.email ?? null,
+      displayName: firestoreData?.displayName ?? decoded.name ?? null,
+      role: role,
+      isRoot: isRoot,
+      status: firestoreData?.status ?? 'pending',
+      office: firestoreData?.office ?? null,
+      officeName: firestoreData?.officeName ?? '',
+      onboardingSteps: firestoreData?.onboardingSteps,
+    };
+  } catch (e) {
+    console.error("verifySessionCookie failed:", e);
+    return null;
+  }
 }
