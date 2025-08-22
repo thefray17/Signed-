@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -62,7 +63,7 @@ export default function ApprovalsPage() {
     const handleUserAction = async (userId: string, newStatus: 'approved' | 'rejected') => {
         try {
             const userDocRef = doc(db, 'users', userId);
-            await updateDoc(userDocRef, { status: newStatus });
+            await updateDoc(userDocRef, { status: newStatus, updatedAt: new Date() });
             toast({
                 title: `User ${newStatus}`,
                 description: `The user has been successfully ${newStatus}.`,
@@ -91,7 +92,7 @@ export default function ApprovalsPage() {
             <TableBody>
                 {loading ? (
                     <TableRow>
-                        <TableCell colSpan={5}>
+                        <TableCell colSpan={4}>
                             <Skeleton className="h-10 w-full" />
                         </TableCell>
                     </TableRow>
@@ -101,7 +102,7 @@ export default function ApprovalsPage() {
                     <div className="font-medium">{user.displayName}</div>
                     <div className="text-sm text-muted-foreground">{user.email}</div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{user.office}</TableCell>
+                    <TableCell className="hidden md:table-cell">{user.officeName}</TableCell>
                     <TableCell className="hidden md:table-cell">
                         <Badge variant="outline">{user.role}</Badge>
                     </TableCell>
@@ -121,7 +122,7 @@ export default function ApprovalsPage() {
                 </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24">
+                        <TableCell colSpan={4} className="text-center h-24">
                             No {status} approvals.
                         </TableCell>
                     </TableRow>
@@ -138,9 +139,9 @@ export default function ApprovalsPage() {
     <Tabs defaultValue="pending">
       <div className="flex items-center">
         <TabsList>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          <TabsTrigger value="pending">Pending ({pendingUsers.length})</TabsTrigger>
+          <TabsTrigger value="approved">Approved ({approvedUsers.length})</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected ({rejectedUsers.length})</TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value="pending">

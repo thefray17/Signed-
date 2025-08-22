@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const onboardingSchema = z.object({
   office: z.string().min(1, { message: "Please select an office." }),
-  role: z.string().min(2, { message: "Role must be at least 2 characters." }),
+  desiredRole: z.string().min(2, { message: "Role must be at least 2 characters." }),
 });
 
 export default function OnboardingPage() {
@@ -36,7 +36,7 @@ export default function OnboardingPage() {
   const form = useForm<z.infer<typeof onboardingSchema>>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      role: "user",
+      desiredRole: "",
       office: "",
     }
   });
@@ -94,7 +94,7 @@ export default function OnboardingPage() {
       await updateDoc(userDocRef, {
         office: values.office,
         officeName: officeName,
-        role: values.role, // The role here is the requested role. Admin will confirm.
+        desiredRole: values.desiredRole,
         onboardingComplete: true,
         status: 'pending',
         updatedAt: serverTimestamp(),
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Complete Your Profile</CardTitle>
           <CardDescription>
-            Please select your office and enter your role to continue. This information will be verified by an administrator.
+            Please select your office and enter your desired role to continue. This information will be verified by an administrator.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -171,7 +171,7 @@ export default function OnboardingPage() {
               />
               <FormField
                 control={form.control}
-                name="role"
+                name="desiredRole"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Your Desired Role</FormLabel>

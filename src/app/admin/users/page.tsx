@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -95,7 +96,7 @@ export default function UsersPage() {
                       <div className="font-medium">{user.displayName}</div>
                       <div className="text-sm text-muted-foreground">{user.email}</div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{user.office}</TableCell>
+                    <TableCell className="hidden md:table-cell">{user.officeName}</TableCell>
                     <TableCell className="hidden sm:table-cell">
                         <Badge variant={user.role === 'admin' ? "default" : "secondary"}>{user.role}</Badge>
                     </TableCell>

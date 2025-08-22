@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'user' | 'coadmin' | 'admin';
 export type UserStatus = 'pending' | 'approved' | 'rejected';
 
@@ -7,6 +8,7 @@ export interface AppUser {
   email: string | null;
   displayName: string | null;
   role: UserRole;
+  desiredRole?: string; // The role the user requests during onboarding
   office: string | null; // This will be an office ID
   officeName?: string; // Add office name for convenience
   status: UserStatus;
@@ -17,6 +19,10 @@ export interface AppUser {
 export interface Office {
   id: string;
   name: string;
+  visibility: 'public' | 'private';
+  status: 'active' | 'archived';
+  createdAt: any;
+  updatedAt: any;
 }
 
 export type DocumentStatus = 'draft' | 'in_transit' | 'pending_transit' | 'signed' | 'completed' | 'rejected';
