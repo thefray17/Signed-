@@ -58,6 +58,7 @@ export const onAuthCreate = functionsV1
 
     const base = {
       email,
+      displayName: user.displayName,
       role: "user" as const,
       status: "pending" as const,
       onboardingSteps: {
@@ -134,6 +135,48 @@ export const assignUserRole = onCall(async (request) => {
     // Re-throw the error to the client
     throw error;
   }
+});
+
+/** v2 callable: update user status */
+export const updateUserStatus = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+  
+    const caller = request.auth;
+    const callerIsRoot = caller.token.isRoot === true;
+    const callerIsAdmin = caller.token.role === "admin" || callerIsRoot;
+    const actor = { uid: caller.uid, email: caller.token.email || "unknown" };
+  
+    const { targetUserId, status } = (request.data || {}) as {
+      targetUserId?: string;
+      status?: "pending" | "approved" | "rejected" | "disabled";
+    };
+  
+    const auditDetails: Record<string, any> = { targetUserId, requestedStatus: status };
+  
+    try {
+      if (!targetUserId || !status)
+        throw new HttpsError("invalid-argument", "Provide targetUserId and status.");
+  
+      if (!callerIsAdmin)
+        throw new HttpsError("permission-denied", "Only admins or co-admins can change user status.");
+      
+      const targetUserDoc = await db.doc(`users/${targetUserId}`).get();
+      const oldStatus = targetUserDoc.data()?.status || "pending";
+      auditDetails.oldStatus = oldStatus;
+  
+      await db.doc(`users/${targetUserId}`).set(
+        { status, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+  
+      await addAuditLog(actor.uid, actor.email, "updateUserStatus", "success", auditDetails);
+      return { ok: true };
+  
+    } catch (error: any) {
+      auditDetails.error = error.message;
+      await addAuditLog(actor.uid, actor.email, "updateUserStatus", "failure", auditDetails);
+      throw error;
+    }
 });
 
 /** v2 callable: ensure root */

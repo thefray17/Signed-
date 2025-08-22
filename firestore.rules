@@ -12,41 +12,43 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isElevated());
       allow create: if signedIn() && request.auth.uid == uid;
-      // user cannot change their own role/status
+      // user cannot change their own role/status unless they are an admin
       allow update: if signedIn()
                     && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role
                     && request.resource.data.status == resource.data.status;
+      // Elevated users can update anything on a user doc
       allow update: if isElevated();
-      allow delete: if false;
+      allow delete: if isElevated();
     }
 
     // ---- offices ----
     match /offices/{officeId} {
-      allow get, list: if signedIn();
+      allow get, list: if signedIn() && (isElevated() || resource.data.visibility == "public");
       allow create, update, delete: if isElevated();
     }
 
     // ---- documents ----
     match /documents/{docId} {
-      allow read: if signedIn();
-      // Users can create documents
+      allow get: if signedIn();
+      allow list: if signedIn();
       allow create: if signedIn();
-      // Only allow updating specific fields
-      allow update: if signedIn(); // This needs to be more granular later
-      allow delete: if false;
-    }
-    
-    // ---- auditLogs ----
-    match /auditLogs/{logId} {
-        allow read: if isElevated();
-        allow list: if isElevated();
-        allow create, update, delete: if false; // Can only be written by backend functions
+      allow update: if signedIn(); // Server-side actions handle detailed logic
+      allow delete: if signedIn() && request.auth.uid == resource.data.ownerId;
     }
 
-    // Deny everything else by default
-    match /{document=**} {
+    // ---- auditLogs ----
+    match /auditLogs/{logId} {
+      allow read: if isElevated();
+      allow list: if isElevated();
+      allow create, update, delete: if false; // Only backend can write
+    }
+
+    // --- CATCH-ALL: Deny everything else
+    match /{path=**} {
       allow read, write: if false;
     }
   }
 }
+
+    
