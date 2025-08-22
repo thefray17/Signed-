@@ -12,6 +12,7 @@ import { FileSignature } from 'lucide-react';
 export interface AuthContextType {
   user: AppUser | null;
   firebaseUser: FirebaseUser | null;
+  claims: any | null;
   loading: boolean;
 }
 
@@ -22,6 +23,7 @@ const ROOT_ADMIN_EMAIL = "eballeskaye@gmail.com";
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<AppUser | null>(null);
+  const [claims, setClaims] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,10 +31,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFirebaseUser(fbUser);
       if (fbUser) {
         const token = await getIdTokenResult(fbUser, true);
-        const claims = token.claims as any;
+        const tokenClaims = token.claims as any;
+        setClaims(tokenClaims);
 
         const email = (fbUser.email ?? "").toLowerCase();
-        const isRoot = !!claims.isRoot || email === ROOT_ADMIN_EMAIL;
+        const isRoot = !!tokenClaims.isRoot || email === ROOT_ADMIN_EMAIL;
 
         const userDoc = await getDoc(doc(db, "users", fbUser.uid));
         const firestoreData = userDoc.exists() ? (userDoc.data() as any) : {};
@@ -41,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           uid: fbUser.uid,
           email: fbUser.email,
           displayName: fbUser.displayName,
-          role: isRoot ? "admin" : (claims.role as string) || firestoreData.role || "user",
+          role: isRoot ? "admin" : (tokenClaims.role as string) || firestoreData.role || "user",
           isRoot,
           office: firestoreData.office ?? null,
           officeName: firestoreData.officeName,
@@ -50,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } as AppUser);
       } else {
         setUser(null);
+        setClaims(null);
       }
       setLoading(false);
     });
@@ -72,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading }}>
+    <AuthContext.Provider value={{ user, firebaseUser, claims, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,16 +1,14 @@
 
 import "./globals.css";
 import React from "react";
-import { ClientProviders } from "@/components/providers/client-providers";
-import { auth } from "@/lib/server-auth";
-import { getRoleFromClaims } from "@/lib/roles";
-import { NAV } from "@/lib/nav";
-import { AppSidebar } from "@/components/app-sidebar";
+import { ClientProviders } from "@/components/providers/client-providers";          // wraps with your AuthProvider
+import { SidebarContainer } from "./(app-shell)/SidebarContainer";
+import { UserNav } from "@/components/layout/user-nav";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { PanelLeft } from "lucide-react";
-import { UserNav } from "@/components/layout/user-nav";
-
+import { auth } from "@/lib/server-auth";
+import { getRoleFromClaims } from "@/lib/roles";
 
 export const metadata = { title: "Signed!" };
 
@@ -18,18 +16,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = await auth().catch(() => null);
   const claims: any = (session?.user as any)?.claims ?? {};
   const role = getRoleFromClaims(claims);
-
-  const showSidebar = role !== "guest";
-  const sections = NAV[role];
+  const showSidebar = role !== 'guest';
 
   return (
     <html lang="en">
       <body className="min-h-dvh w-full antialiased">
         <ClientProviders>
-          {showSidebar ? (
+           {showSidebar ? (
             <div className="min-h-dvh w-full flex">
               <div className="hidden md:block">
-                 <AppSidebar sections={sections} projectLabel="Signed!" />
+                 <SidebarContainer />
               </div>
 
               <div className="flex-1 flex min-w-0 flex-col">
@@ -41,8 +37,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         <span className="sr-only">Toggle Menu</span>
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="sm:max-w-xs">
-                       <AppSidebar sections={sections} projectLabel="Signed! (Mobile)" />
+                    <SheetContent side="left" className="sm:max-w-xs p-0">
+                       <SidebarContainer />
                     </SheetContent>
                   </Sheet>
                   <div className="ml-auto flex items-center gap-2">

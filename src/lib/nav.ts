@@ -1,3 +1,4 @@
+
 import type { Role } from "./roles";
 
 export type NavItem = { label: string; href: string; icon?: string; badge?: string; external?: boolean };
