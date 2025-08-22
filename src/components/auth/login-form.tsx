@@ -4,8 +4,8 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { signInWithEmailAndPassword, getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase-app";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase-app";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
+function looksLikeJwt(token: unknown): token is string {
+  return typeof token === "string" && token.split(".").length === 3 && token.length > 50;
+}
 
 export function LoginForm() {
   const [email, setEmail] = React.useState("");
@@ -30,13 +33,12 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      const auth = getAuth(app);
       const cred = await signInWithEmailAndPassword(auth, email, password);
       
       // Force refresh to avoid stale/empty tokens after sign-in
       const idToken = await cred.user.getIdToken(true);
-      if (!idToken || typeof idToken !== "string") {
-        throw new Error("No ID token from Firebase client");
+      if (!looksLikeJwt(idToken)) {
+        throw new Error("Client received invalid ID token");
       }
 
       const r = await fetch("/api/auth/session", {

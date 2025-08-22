@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminApp } from "@/lib/firebase-admin-app";
 export const runtime = "nodejs";
-
 export async function GET() {
   return NextResponse.json({
     adminProjectId: adminApp.options.projectId || null,
