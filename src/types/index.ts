@@ -2,7 +2,18 @@
 import { Timestamp } from "firebase/firestore";
 
 export type UserRole = 'user' | 'coadmin' | 'admin';
-export type UserStatus = 'pending' | 'approved' | 'rejected';
+export type UserStatus = 'pending' | 'approved' | 'rejected' | 'disabled';
+
+export interface OnboardingSteps {
+    profileCompleted: {
+        status: boolean;
+        timestamp: Timestamp | null;
+    },
+    roleAssigned: {
+        status: boolean;
+        timestamp: Timestamp | null;
+    }
+}
 
 export interface AppUser {
   uid: string;
@@ -13,7 +24,7 @@ export interface AppUser {
   office: string | null; // This will be an office ID
   officeName?: string; // Add office name for convenience
   status: UserStatus;
-  onboardingComplete: boolean;
+  onboardingSteps: OnboardingSteps;
   isRoot?: boolean;
 }
 

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { doc, updateDoc, collection, getDocs, serverTimestamp, getDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, getDocs, serverTimestamp, getDoc, Timestamp } from "firebase/firestore";
 import { Loader2, Send } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -95,7 +95,10 @@ export default function OnboardingPage() {
         office: values.office,
         officeName: officeName,
         desiredRole: values.desiredRole,
-        onboardingComplete: true,
+        "onboardingSteps.profileCompleted": {
+            status: true,
+            timestamp: Timestamp.now(),
+        },
         status: 'pending',
         updatedAt: serverTimestamp(),
       });

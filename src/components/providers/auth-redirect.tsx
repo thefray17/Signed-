@@ -101,7 +101,7 @@ export default function AuthRedirect() {
                 if (!pathname.startsWith('/dashboard')) router.replace('/dashboard');
                 break;
             case 'pending':
-                if (!userData.onboardingComplete) {
+                if (!userData.onboardingSteps.profileCompleted.status) {
                     if (pathname !== '/onboarding') router.replace('/onboarding');
                 } else {
                     if (pathname !== '/pending-approval') router.replace('/pending-approval');
