@@ -1,62 +1,84 @@
 
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { adminApp } from "@/lib/firebase-admin-app";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs"; // Admin SDK requires Node runtime
 
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
 const TWO_WEEKS_IN_SECONDS = 14 * ONE_DAY_IN_SECONDS;
 
+function json(status: number, body: unknown) {
+  return NextResponse.json(body, { status });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { idToken, remember } = (await req.json()) as { idToken?: string; remember?: boolean };
-    if (!idToken) {
-      return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
-    }
+    const { idToken, remember } = (await req.json()) as {
+      idToken?: string;
+      remember?: boolean;
+    };
+    if (!idToken) return json(400, { error: "Missing idToken" });
 
     const auth = adminApp.auth();
     const expiresIn = (remember ? TWO_WEEKS_IN_SECONDS : ONE_DAY_IN_SECONDS) * 1000;
-    
-    // For local development with the emulator, we can't create a session cookie.
-    // Instead, we'll use the ID token directly.
-    const isEmulator = !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
-    
-    let sessionCookie: string;
 
-    if (isEmulator) {
-        // In emulator mode, the ID token itself acts as the session "cookie"
-        sessionCookie = idToken;
-    } else {
-        // In production, create a real session cookie.
-        // This verifies the token and mints a new cookie.
-        const decodedIdToken = await auth.verifyIdToken(idToken, true);
-
-        // Make sure the token is from the same project
-        if (decodedIdToken.aud !== process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-            return NextResponse.json({ error: "Token is for the wrong project" }, { status: 401 });
-        }
-        
-        sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
+    // Verify ID token first to produce clear errors and read project.
+    let decoded;
+    try {
+      decoded = await auth.verifyIdToken(idToken, true);
+    } catch (e: any) {
+      const code = e?.code || "auth/invalid-id-token";
+      return json(401, { error: `Invalid ID token (${code})` });
     }
 
+    // Cross-check project to avoid client/admin mismatch.
+    const adminProject = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const tokenAud = (decoded as any)?.aud;
+    if (adminProject && tokenAud && adminProject !== tokenAud) {
+      return json(400, {
+        error: `Token project mismatch: token.aud=${tokenAud} vs admin.projectId=${adminProject}`,
+      });
+    }
+    const tokenIss = (decoded as any)?.iss; // e.g. https://securetoken.google.com/<projectId>
+    if (adminProject && tokenIss && !String(tokenIss).endsWith("/" + adminProject)) {
+      return json(400, {
+        error: `Token issuer mismatch: iss=${tokenIss} vs admin.projectId=${adminProject}`,
+      });
+    }
 
-    // Cookie options
+    const isEmu = !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
+
+    // Create cookie value: session cookie in prod, raw ID token in emulator.
+    let cookieValue: string;
+    let maxAge = remember ? TWO_WEEKS_IN_SECONDS : ONE_DAY_IN_SECONDS;
+
+    if (isEmu) {
+      // Auth Emulator: be liberal—use ID token directly, verify later with verifyIdToken.
+      cookieValue = idToken;
+    } else {
+      try {
+        cookieValue = await auth.createSessionCookie(idToken, { expiresIn });
+      } catch (e: any) {
+        const code = e?.code || "auth/create-session-cookie-failed";
+        return json(401, { error: `Invalid token (${code})` });
+      }
+    }
+
     const res = new NextResponse(JSON.stringify({ status: "success" }), { status: 200 });
     res.cookies.set({
       name: "session",
-      value: sessionCookie,
+      value: cookieValue,
       httpOnly: true,
       sameSite: "lax",
       path: "/",
       secure: process.env.NODE_ENV === "production",
-      maxAge: remember ? TWO_WEEKS_IN_SECONDS : ONE_DAY_IN_SECONDS,
+      maxAge: maxAge,
     });
-
     return res;
-  } catch (e) {
+  } catch (e: any) {
     console.error("POST /api/auth/session failed:", e);
-    const errorMessage = (e instanceof Error) ? e.message : 'Invalid token';
-    return NextResponse.json({ error: errorMessage }, { status: 401 });
+    return json(500, { error: "Server error creating session" });
   }
 }
 

@@ -43,8 +43,8 @@ export function LoginForm() {
       });
 
       if (!r.ok) {
-        const data = await r.json();
-        throw new Error(data.error || "Failed to create session");
+        const data = await r.json().catch(() => ({}));
+        throw new Error(data?.error || "Failed to create session");
       }
       
       toast({
@@ -52,9 +52,8 @@ export function LoginForm() {
         description: "Welcome back!",
       });
 
-      // Navigate using server-rendered auth
       router.replace(next);
-      router.refresh(); // This is important to force a re-fetch of server components
+      router.refresh(); 
     } catch (e: any) {
       console.error(e);
       let errorMessage = e?.message || "Login failed";

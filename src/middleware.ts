@@ -3,14 +3,22 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith("/dashboard") || req.nextUrl.pathname.startsWith("/admin") || req.nextUrl.pathname.startsWith("/rootadmin")) {
-    const hasSession = req.cookies.get("session") || req.cookies.get("__session");
-    if (!hasSession) {
-      const url = new URL("/login", req.url);
-      url.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
-      return NextResponse.redirect(url);
-    }
+  const publicPaths = ['/login', '/signup', '/'];
+  const pathname = req.nextUrl.pathname;
+
+  // Allow public paths
+  if (publicPaths.includes(pathname) || pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.endsWith('.ico')) {
+      return NextResponse.next();
   }
+  
+  // For all other paths, check for a session
+  const hasSession = req.cookies.get("session") || req.cookies.get("__session");
+  if (!hasSession) {
+    const url = new URL("/login", req.url);
+    url.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
+    return NextResponse.redirect(url);
+  }
+
   return NextResponse.next();
 }
 
@@ -22,9 +30,7 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - / (the root page, which is public)
-     * - /login, /signup (auth pages)
-     * - /api (api routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|login|signup|api|$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|$).*)',
   ]
 };
