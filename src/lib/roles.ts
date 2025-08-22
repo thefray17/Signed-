@@ -1,4 +1,3 @@
-
 export type Role = "root" | "admin" | "coadmin" | "user" | "guest";
 
 export function getRoleFromClaims(claims: any): Role {
