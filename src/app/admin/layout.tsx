@@ -4,7 +4,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import { FileSignature, UserCheck, Building, Users, LogOut } from "lucide-react";
+import { FileSignature, UserCheck, Building, Users, LogOut, ShieldAlert } from "lucide-react";
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset, useSidebar } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
     { href: "/admin/approvals", label: "Approvals", icon: UserCheck, roles: ['admin', 'coadmin'] },
     { href: "/admin/users", label: "Manage Users", icon: Users, roles: ['admin', 'coadmin'] },
     { href: "/admin/offices", label: "Manage Offices", icon: Building, roles: ['admin', 'coadmin'] },
+    { href: "/admin/audit-logs", label: "Audit Logs", icon: ShieldAlert, roles: ['admin', 'coadmin'] },
 ];
 
 

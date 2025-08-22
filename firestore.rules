@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -11,33 +12,41 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isElevated());
       allow create: if signedIn() && request.auth.uid == uid;
-      allow update: if (signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status) || isElevated();
+      // user cannot change their own role/status
+      allow update: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.status == resource.data.status;
+      allow update: if isElevated();
       allow delete: if false;
     }
 
     // ---- offices ----
     match /offices/{officeId} {
-      allow get, list: if signedIn() && (isElevated() || resource.data.visibility == "public");
+      allow get, list: if signedIn();
       allow create, update, delete: if isElevated();
     }
-    
+
     // ---- documents ----
     match /documents/{docId} {
-      allow read: if signedIn(); // More specific rules can be added here
+      allow read: if signedIn();
+      // Users can create documents
       allow create: if signedIn();
-      allow update: if signedIn(); // More specific rules can be added here
+      // Only allow updating specific fields
+      allow update: if signedIn(); // This needs to be more granular later
+      allow delete: if false;
     }
-
+    
     // ---- auditLogs ----
     match /auditLogs/{logId} {
-      allow read: if isElevated();
-      allow list: if isElevated();
-      allow write: if false; // Only backend can write
+        allow read: if isElevated();
+        allow list: if isElevated();
+        allow create, update, delete: if false; // Can only be written by backend functions
     }
 
-    // ---- functions ----
-    match /functions/getFunctionHealth {
-        allow get: if isElevated();
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
