@@ -53,7 +53,7 @@ function RootRepair() {
       await ensure({});
       await getAuth().currentUser?.getIdToken(true);
       setMsg("Root claims asserted. Token refreshed. Reloading...");
-      window.location.reload();
+      setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
       setMsg(e?.message || "Failed");
     } finally {
@@ -193,7 +193,7 @@ export default function RootAdminPage() {
         setLoading(true);
         try {
             const snap = await getDocs(
-                query(collection(db, "users"), orderBy("createdAt", "desc"), limit(100))
+                query(collection(db, "users"), orderBy("createdAt", "desc"), limit(10))
             );
             setUsers(
                 snap.docs.map((d) => {
@@ -270,7 +270,7 @@ export default function RootAdminPage() {
         <div className="lg:col-span-2 space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Users</CardTitle>
+                    <CardTitle>Users (latest 10)</CardTitle>
                     <CardDescription>View and manage all user roles directly. This is the highest level of user administration.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 max-h-96 overflow-auto">
@@ -316,3 +316,4 @@ export default function RootAdminPage() {
     </div>
   );
 }
+
