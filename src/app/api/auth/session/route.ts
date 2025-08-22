@@ -1,9 +1,8 @@
-
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { adminApp } from "@/lib/firebase-admin-app";
 
-export const runtime = "nodejs"; // Admin SDK requires Node runtime
+export const runtime = "nodejs"; // Admin SDK requires Node
 
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
 const TWO_WEEKS_IN_SECONDS = 14 * ONE_DAY_IN_SECONDS;
@@ -14,17 +13,19 @@ function json(status: number, body: unknown) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { idToken, remember } = (await req.json()) as {
-      idToken?: string;
-      remember?: boolean;
-    };
-    if (!idToken) return json(400, { error: "Missing idToken" });
+    const body = (await req.json()) as { idToken?: unknown; remember?: boolean };
+    const idToken = typeof body.idToken === "string" ? body.idToken : "";
+    const remember = !!body.remember;
+
+    if (!idToken || idToken.length < 20) {
+      return json(400, { error: "Missing/invalid idToken (empty or wrong type)" });
+    }
 
     const auth = adminApp.auth();
     const expiresIn = (remember ? TWO_WEEKS_IN_SECONDS : ONE_DAY_IN_SECONDS) * 1000;
 
-    // Verify ID token first to produce clear errors and read project.
-    let decoded;
+    // Verify ID token first for clear diagnostics
+    let decoded: any;
     try {
       decoded = await auth.verifyIdToken(idToken, true);
     } catch (e: any) {
@@ -32,15 +33,15 @@ export async function POST(req: NextRequest) {
       return json(401, { error: `Invalid ID token (${code})` });
     }
 
-    // Cross-check project to avoid client/admin mismatch.
-    const adminProject = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    const tokenAud = (decoded as any)?.aud;
+    // Cross-check project & issuer to detect mismatches
+    const adminProject = adminApp.options.projectId;
+    const tokenAud = decoded?.aud;
+    const tokenIss = decoded?.iss; // https://securetoken.google.com/<projectId>
     if (adminProject && tokenAud && adminProject !== tokenAud) {
       return json(400, {
         error: `Token project mismatch: token.aud=${tokenAud} vs admin.projectId=${adminProject}`,
       });
     }
-    const tokenIss = (decoded as any)?.iss; // e.g. https://securetoken.google.com/<projectId>
     if (adminProject && tokenIss && !String(tokenIss).endsWith("/" + adminProject)) {
       return json(400, {
         error: `Token issuer mismatch: iss=${tokenIss} vs admin.projectId=${adminProject}`,
@@ -49,13 +50,12 @@ export async function POST(req: NextRequest) {
 
     const isEmu = !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
 
-    // Create cookie value: session cookie in prod, raw ID token in emulator.
+    // Use session cookie in prod; in emulator, reuse raw ID token
     let cookieValue: string;
     let maxAge = remember ? TWO_WEEKS_IN_SECONDS : ONE_DAY_IN_SECONDS;
 
     if (isEmu) {
-      // Auth Emulator: be liberal—use ID token directly, verify later with verifyIdToken.
-      cookieValue = idToken;
+      cookieValue = idToken; // verified above via verifyIdToken()
     } else {
       try {
         cookieValue = await auth.createSessionCookie(idToken, { expiresIn });
@@ -73,10 +73,10 @@ export async function POST(req: NextRequest) {
       sameSite: "lax",
       path: "/",
       secure: process.env.NODE_ENV === "production",
-      maxAge: maxAge,
+      maxAge,
     });
     return res;
-  } catch (e: any) {
+  } catch(e) {
     console.error("POST /api/auth/session failed:", e);
     return json(500, { error: "Server error creating session" });
   }

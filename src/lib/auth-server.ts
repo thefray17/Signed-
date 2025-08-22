@@ -1,4 +1,3 @@
-
 import { cookies } from "next/headers";
 import { adminApp } from "@/lib/firebase-admin-app";
 import type { AppUser, UserRole } from "@/types";

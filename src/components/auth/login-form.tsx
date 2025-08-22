@@ -21,7 +21,6 @@ export function LoginForm() {
   const [password, setPassword] = React.useState("");
   const [remember, setRemember] = React.useState(true);
   const [loading, setLoading] = React.useState(false);
-  const [err, setErr] = React.useState<string | null>(null);
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get("next") || "/dashboard";
@@ -29,12 +28,16 @@ export function LoginForm() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(null);
     setLoading(true);
     try {
       const auth = getAuth(app);
       const cred = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Force refresh to avoid stale/empty tokens after sign-in
       const idToken = await cred.user.getIdToken(true);
+      if (!idToken || typeof idToken !== "string") {
+        throw new Error("No ID token from Firebase client");
+      }
 
       const r = await fetch("/api/auth/session", {
         method: "POST",
@@ -60,7 +63,6 @@ export function LoginForm() {
       if (e.code === 'auth/invalid-credential') {
         errorMessage = 'Invalid email or password.';
       }
-      setErr(errorMessage);
       toast({
         variant: "destructive",
         title: "Login Failed",
@@ -108,8 +110,6 @@ export function LoginForm() {
                 <Checkbox id="remember" checked={remember} onCheckedChange={(checked) => setRemember(!!checked)} />
                 <Label htmlFor="remember" className="text-sm font-normal">Remember me</Label>
               </div>
-
-              {err && <p className="text-sm font-medium text-destructive">{err}</p>}
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
