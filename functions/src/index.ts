@@ -1,17 +1,21 @@
-
-import * as functions from "firebase-functions";
+import { setGlobalOptions } from "firebase-functions/v2";
+import { onUserCreated } from "firebase-functions/v2/identity";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+
+setGlobalOptions({
+  region: "asia-southeast1",
+});
 
 initializeApp();
 
 const ROOT = "eballeskaye@gmail.com";
 
 /** Make root admin + isRoot on first auth create */
-export const onAuthCreate = functions
-  .region("asia-southeast1")
-  .auth.user().onCreate(async (user) => {
+export const onauthcreate = onUserCreated(async (event) => {
+  const user = event.data;
   const db = getFirestore();
   const auth = getAuth();
 
@@ -38,29 +42,27 @@ export const onAuthCreate = functions
 });
 
 /** Only root can assign Admin; Admin (or root) can assign Co-admin; nobody can change the root user */
-export const assignUserRole = functions
-  .region("asia-southeast1")
-  .https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign in");
+export const assignuserrole = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in");
 
-  const { targetUserId, role } = (data || {}) as { targetUserId?: string; role?: "user" | "coadmin" | "admin" };
-  if (!targetUserId || !role) throw new functions.https.HttpsError("invalid-argument", "targetUserId and role are required");
+  const { targetUserId, role } = (request.data || {}) as { targetUserId?: string; role?: "user" | "coadmin" | "admin" };
+  if (!targetUserId || !role) throw new HttpsError("invalid-argument", "targetUserId and role are required");
 
   const auth = getAuth();
-  const callerEmail = String(context.auth.token.email || "").toLowerCase();
-  const isRootCaller = !!context.auth.token.isRoot || callerEmail === ROOT;
-  const callerRole = String(context.auth.token.role || "");
+  const callerEmail = String(request.auth.token.email || "").toLowerCase();
+  const isRootCaller = !!request.auth.token.isRoot || callerEmail === ROOT;
+  const callerRole = String(request.auth.token.role || "");
 
   // Prevent anyone from modifying the root user (even the root themself)
   const target = await auth.getUser(targetUserId);
   if ((target.email || "").toLowerCase() === ROOT) {
-    throw new functions.https.HttpsError("permission-denied", "Root admin cannot be modified.");
+    throw new HttpsError("permission-denied", "Root admin cannot be modified.");
   }
 
   if (role === "admin" && !isRootCaller)
-    throw new functions.https.HttpsError("permission-denied", "Only root can assign Admin.");
+    throw new HttpsError("permission-denied", "Only root can assign Admin.");
   if (role === "coadmin" && !isRootCaller && callerRole !== 'admin')
-    throw new functions.https.HttpsError("permission-denied", "Only Admin can assign Co-admin.");
+    throw new HttpsError("permission-denied", "Only Admin can assign Co-admin.");
 
   await auth.setCustomUserClaims(targetUserId, { role, isRoot: false }); // never grant isRoot here
   await getFirestore().doc(`users/${targetUserId}`).set(
@@ -70,18 +72,16 @@ export const assignUserRole = functions
   return { ok: true };
 });
 
-export const ensureRootClaims = functions
-  .region("asia-southeast1")
-  .https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Sign in");
+export const ensurerootclaims = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Sign in");
   }
-  const email = String(context.auth.token.email || "").toLowerCase();
+  const email = String(request.auth.token.email || "").toLowerCase();
   if (email !== ROOT) {
-    throw new functions.https.HttpsError("permission-denied", "Root only");
+    throw new HttpsError("permission-denied", "Root only");
   }
 
-  const uid = context.auth.uid;
+  const uid = request.auth.uid;
   await getAuth().setCustomUserClaims(uid, { role: "admin", isRoot: true });
   await getFirestore().doc(`users/${uid}`).set(
     { role: "admin", isRoot: true, status: "approved", updatedAt: Date.now() },

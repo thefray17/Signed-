@@ -41,7 +41,9 @@ const firestore_1 = require("firebase-admin/firestore");
 (0, app_1.initializeApp)();
 const ROOT = "eballeskaye@gmail.com";
 /** Make root admin + isRoot on first auth create */
-exports.onAuthCreate = functions.auth.user().onCreate(async (user) => {
+exports.onAuthCreate = functions
+    .region("asia-southeast1")
+    .auth.user().onCreate(async (user) => {
     const db = (0, firestore_1.getFirestore)();
     const auth = (0, auth_1.getAuth)();
     const base = {
@@ -63,7 +65,9 @@ exports.onAuthCreate = functions.auth.user().onCreate(async (user) => {
     }
 });
 /** Only root can assign Admin; Admin (or root) can assign Co-admin; nobody can change the root user */
-exports.assignUserRole = functions.https.onCall(async (data, context) => {
+exports.assignUserRole = functions
+    .region("asia-southeast1")
+    .https.onCall(async (data, context) => {
     if (!context.auth)
         throw new functions.https.HttpsError("unauthenticated", "Sign in");
     const { targetUserId, role } = (data || {});
@@ -86,7 +90,9 @@ exports.assignUserRole = functions.https.onCall(async (data, context) => {
     await (0, firestore_1.getFirestore)().doc(`users/${targetUserId}`).set({ role, isRoot: false, updatedAt: Date.now() }, { merge: true });
     return { ok: true };
 });
-exports.ensureRootClaims = functions.https.onCall(async (data, context) => {
+exports.ensureRootClaims = functions
+    .region("asia-southeast1")
+    .https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "Sign in");
     }

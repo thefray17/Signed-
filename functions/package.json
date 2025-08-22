@@ -2,7 +2,7 @@
   "name": "signed-functions",
   "private": true,
   "type": "commonjs",
-  "engines": { "node": "18" },
+  "engines": { "node": "20" },
   "main": "lib/index.js",
   "scripts": {
     "build": "rimraf lib && tsc -p tsconfig.json",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "firebase-admin": "^12.5.0",
-    "firebase-functions": "^4.4.1"
+    "firebase-functions": "^5.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
