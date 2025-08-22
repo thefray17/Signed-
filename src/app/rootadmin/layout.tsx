@@ -1,11 +1,23 @@
 
-import React from 'react';
+import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
+import { getCurrentUserWithRole } from "@/lib/auth-server";
+import { AppShell } from "@/components/shell/AppShell";
 
-// This layout is now simpler because the main app shell handles the sidebar.
-export default function RootAdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <>{children}</>;
+
+export const dynamic = "force-dynamic";
+
+
+export default async function RootAdminLayout({ children }: { children: ReactNode }) {
+    const user = await getCurrentUserWithRole();
+
+    if (!user) {
+        redirect("/login");
+    }
+
+    if (user.role !== 'root') {
+        redirect("/dashboard");
+    }
+    
+    return <AppShell user={user}>{children}</AppShell>;
 }
