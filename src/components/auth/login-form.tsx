@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -45,14 +46,26 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      // Force a token refresh to get the latest custom claims.
-      await userCredential.user.getIdToken(true);
-      
-      toast({
-        title: "Login Successful",
-        description: `Welcome back!`,
+      const idToken = await userCredential.user.getIdToken();
+
+      // Create the session cookie.
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
       });
-      // The AuthRedirect component will handle routing.
+
+      if (res.ok) {
+        toast({
+          title: "Login Successful",
+          description: `Welcome back!`,
+        });
+        // The AuthRedirect component will handle routing after a page refresh.
+        // We force a refresh to ensure all server components re-render with the new session.
+        router.refresh();
+      } else {
+        throw new Error("Failed to create session.");
+      }
       
     } catch (error: any) {
       let errorMessage = "An unknown error occurred. Please try again.";

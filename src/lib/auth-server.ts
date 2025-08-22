@@ -7,8 +7,7 @@ const ROOT_ADMIN_EMAIL = process.env.ROOT_ADMIN_EMAIL;
 
 /** Why: single source of truth for user+role on server */
 export async function getCurrentUserWithRole(): Promise<AppUser | null> {
-  const sessionCookie =
-    cookies().get("__session")?.value || cookies().get("session")?.value;
+  const sessionCookie = cookies().get("session")?.value;
   if (!sessionCookie) return null;
   
   try {
@@ -45,6 +44,8 @@ export async function getCurrentUserWithRole(): Promise<AppUser | null> {
     };
   } catch (e) {
     console.error("verifySessionCookie failed:", e);
+    // Clear the invalid cookie
+    cookies().delete('session');
     return null;
   }
 }

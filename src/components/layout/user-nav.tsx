@@ -29,13 +29,18 @@ export function UserNav() {
 
   const handleSignOut = async () => {
     try {
+      // 1. Clear the server session
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      // 2. Sign out from Firebase client
       await signOut(auth);
+      // 3. Redirect to login
       router.push("/login");
       toast({
         title: "Signed Out",
         description: "You have been successfully signed out.",
       });
     } catch (error) {
+      console.error("Error signing out:", error)
       toast({
         variant: "destructive",
         title: "Error signing out",
