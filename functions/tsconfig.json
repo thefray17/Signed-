@@ -1,14 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["es2020"],
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "nodenext",
+    "lib": ["es2022"],
     "outDir": "lib",
     "rootDir": "src",
     "strict": true,
+    "sourceMap": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "compileOnSave": true,
+  "include": [
+    "src"
+  ]
 }
