@@ -4,7 +4,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-setGlobalOptions({ region: "asia-southeast1", runtime: { memoryMiB: 256, timeoutSeconds: 60 } });
+setGlobalOptions({ region: "asia-southeast1", memoryMiB: 256, timeoutSeconds: 60 });
 initializeApp();
 const db = getFirestore();
 const auth = getAuth();
@@ -39,7 +39,6 @@ export const assignuserrole = onCall(async (request) => {
         throw new HttpsError("unauthenticated", "Sign in first.");
     }
     const caller = request.auth;
-    const callerEmail = String(caller.token.email || "").toLowerCase();
     const callerIsRoot = caller.token.isRoot === true;
     const callerIsAdmin = caller.token.role === "admin" || callerIsRoot;
     const { targetUserId, role } = (request.data || {});
