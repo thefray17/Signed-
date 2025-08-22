@@ -15,13 +15,8 @@ export async function POST(req: NextRequest) {
     const auth = adminApp.auth();
     const expiresIn = (remember ? TWO_WEEKS_IN_SECONDS : ONE_DAY_IN_SECONDS) * 1000;
 
-    const decodedIdToken = await auth.verifyIdToken(idToken);
+    await auth.verifyIdToken(idToken);
     
-    // Only process if the user just signed in in the last 5 minutes.
-    if (new Date().getTime() / 1000 - decodedIdToken.auth_time > 5 * 60) {
-      return new NextResponse("Recent sign-in required.", { status: 401 });
-    }
-
     // Create session cookie from ID token
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
