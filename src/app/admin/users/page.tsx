@@ -228,12 +228,14 @@ export default function UsersPage() {
           </TableHeader>
           <TableBody>
              {loading ? (
-                <TableRow>
-                    <TableCell colSpan={5}>
-                        <Skeleton className="h-10 w-full" />
-                    </TableCell>
-                </TableRow>
-             ) : (
+                Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell colSpan={5}>
+                            <Skeleton className="h-10 w-full" />
+                        </TableCell>
+                    </TableRow>
+                ))
+             ) : users.length > 0 ? (
                 users.map(user => (
                   <TableRow key={user.uid}>
                     <TableCell>
@@ -267,6 +269,12 @@ export default function UsersPage() {
                     </TableCell>
                   </TableRow>
                 ))
+             ) : (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        No users found in the system.
+                    </TableCell>
+                </TableRow>
              )}
           </TableBody>
         </Table>

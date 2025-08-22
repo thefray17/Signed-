@@ -91,11 +91,13 @@ export default function ApprovalsPage() {
             </TableHeader>
             <TableBody>
                 {loading ? (
-                    <TableRow>
-                        <TableCell colSpan={4}>
-                            <Skeleton className="h-10 w-full" />
-                        </TableCell>
-                    </TableRow>
+                    Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell colSpan={4}>
+                                <Skeleton className="h-10 w-full" />
+                            </TableCell>
+                        </TableRow>
+                    ))
                 ) : userList.length > 0 ? userList.map(user => (
                 <TableRow key={user.uid}>
                     <TableCell>
@@ -104,7 +106,7 @@ export default function ApprovalsPage() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{user.officeName}</TableCell>
                     <TableCell className="hidden md:table-cell">
-                        <Badge variant="outline">{user.role}</Badge>
+                        <Badge variant="outline">{user.desiredRole}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                         {status === 'pending' && (
@@ -123,7 +125,7 @@ export default function ApprovalsPage() {
                 )) : (
                     <TableRow>
                         <TableCell colSpan={4} className="text-center h-24">
-                            No {status} approvals.
+                           There are no {status} users at this time.
                         </TableCell>
                     </TableRow>
                 )}

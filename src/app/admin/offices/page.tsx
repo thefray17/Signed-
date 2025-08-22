@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -202,12 +203,14 @@ export default function OfficesPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-                <TableRow>
-                    <TableCell colSpan={3}>
-                        <Skeleton className="h-10 w-full" />
-                    </TableCell>
-                </TableRow>
-            ) : (
+                Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell colSpan={3}>
+                            <Skeleton className="h-10 w-full" />
+                        </TableCell>
+                    </TableRow>
+                ))
+            ) : offices.length > 0 ? (
                 offices.map(office => (
                   <TableRow key={office.id}>
                     <TableCell className="font-medium">{office.name}</TableCell>
@@ -229,6 +232,12 @@ export default function OfficesPage() {
                     </TableCell>
                   </TableRow>
                 ))
+            ) : (
+                <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center">
+                        No offices found.
+                    </TableCell>
+                </TableRow>
             )}
           </TableBody>
         </Table>
