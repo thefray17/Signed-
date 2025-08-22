@@ -10,7 +10,7 @@ import * as functionsV1 from "firebase-functions/v1";
 
 import { initializeApp } from "firebase-admin/app";
 import { getAuth, type UserRecord } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 setGlobalOptions({
   region: "asia-southeast1",
@@ -23,6 +23,28 @@ const db = getFirestore();
 const auth = getAuth();
 
 const ROOT_EMAIL = "eballeskaye@gmail.com".toLowerCase();
+
+/** Helper function to create an audit log entry */
+const addAuditLog = async (
+  actorUid: string,
+  actorEmail: string,
+  action: string,
+  status: "success" | "failure",
+  details: Record<string, any>
+) => {
+  try {
+    await db.collection("auditLogs").add({
+      actorUid,
+      actorEmail,
+      action,
+      status,
+      details,
+      timestamp: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Failed to write to audit log:", error);
+  }
+};
 
 /** v1 auth trigger (post-create), pinned to Singapore */
 export const onAuthCreate = functionsV1
@@ -58,31 +80,49 @@ export const assignUserRole = onCall(async (request) => {
   const caller = request.auth;
   const callerIsRoot = caller.token.isRoot === true;
   const callerIsAdmin = caller.token.role === "admin" || callerIsRoot;
+  const actor = { uid: caller.uid, email: caller.token.email || "unknown" };
 
   const { targetUserId, role } = (request.data || {}) as {
     targetUserId?: string;
     role?: "user" | "coadmin" | "admin";
   };
 
-  if (!targetUserId || !role)
-    throw new HttpsError("invalid-argument", "Provide targetUserId and role.");
+  const auditDetails: Record<string, any> = { targetUserId, requestedRole: role };
 
-  if (role === "admin" && !callerIsRoot)
-    throw new HttpsError("permission-denied", "Only root can assign admin.");
-  if ((role === "coadmin" || role === "user") && !callerIsAdmin)
-    throw new HttpsError("permission-denied", "Only admin/root can assign this role.");
+  try {
+    if (!targetUserId || !role)
+      throw new HttpsError("invalid-argument", "Provide targetUserId and role.");
 
-  await auth.setCustomUserClaims(targetUserId, { role });
-  await db.doc(`users/${targetUserId}`).set(
-    { role, updatedAt: Date.now() },
-    { merge: true }
-  );
-  return { ok: true };
+    if (role === "admin" && !callerIsRoot)
+      throw new HttpsError("permission-denied", "Only root can assign admin.");
+    if ((role === "coadmin" || role === "user") && !callerIsAdmin)
+      throw new HttpsError("permission-denied", "Only admin/root can assign this role.");
+    
+    const targetUserDoc = await db.doc(`users/${targetUserId}`).get();
+    const oldRole = targetUserDoc.data()?.role || "user";
+    auditDetails.oldRole = oldRole;
+
+    await auth.setCustomUserClaims(targetUserId, { role });
+    await db.doc(`users/${targetUserId}`).set(
+      { role, updatedAt: Date.now() },
+      { merge: true }
+    );
+
+    await addAuditLog(actor.uid, actor.email, "assignUserRole", "success", auditDetails);
+    return { ok: true };
+
+  } catch (error: any) {
+    auditDetails.error = error.message;
+    await addAuditLog(actor.uid, actor.email, "assignUserRole", "failure", auditDetails);
+    // Re-throw the error to the client
+    throw error;
+  }
 });
 
 /** v2 callable: ensure root */
 export const ensureRootClaims = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+  
   const email = String(request.auth.token.email || "").toLowerCase();
   if (email !== ROOT_EMAIL) throw new HttpsError("permission-denied", "Root only.");
 
@@ -92,5 +132,8 @@ export const ensureRootClaims = onCall(async (request) => {
     { role: "admin", isRoot: true, status: "approved", updatedAt: Date.now() },
     { merge: true }
   );
+
+  await addAuditLog(uid, email, "ensureRootClaims", "success", { targetUserId: uid });
+
   return { ok: true };
 });

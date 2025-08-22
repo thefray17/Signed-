@@ -20,14 +20,26 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ---- offices (NEW) ----
+    // ---- offices ----
     match /offices/{officeId} {
-      // Read: any signed-in user may read public offices; elevated can read all
       allow get, list: if signedIn() && (isElevated() || resource.data.visibility == "public");
+      allow create, update, delete: if isElevated();
+    }
+    
+    // ---- documents ----
+    match /documents/{docId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn();
+      allow delete: if false;
+    }
 
-      // Create/Update/Delete: only elevated roles
-      allow create: if isElevated();
-      allow update, delete: if isElevated();
+    // ---- auditLogs (NEW) ----
+    match /auditLogs/{logId} {
+      // Read: Only admins and co-admins
+      allow get, list: if isElevated();
+      // Create, Update, Delete: No one from the client.
+      allow write: if false;
     }
 
     // Optional: subcollections under offices (e.g., branches)
@@ -36,31 +48,5 @@ service cloud.firestore {
       allow create, update, delete: if isElevated();
     }
 
-    // ---- documents ----
-    match /documents/{docId} {
-        // Owner and elevated users can read.
-        // Users in the document's history can also read.
-        allow get: if signedIn() && (resource.data.ownerId == request.auth.uid || isElevated() || resource.data.currentOfficeId in request.auth.token.offices);
-
-        // List: Users can list documents they own or that are in their office
-        allow list: if signedIn();
-
-        // Create: Any signed-in user can create a document
-        allow create: if signedIn();
-
-        // Update: Owner can update (e.g., recall).
-        // Elevated users can update.
-        // A user who is part of the current office for signing can update.
-        allow update: if signedIn() && (resource.data.ownerId == request.auth.uid || isElevated() || resource.data.currentOfficeId in request.auth.token.offices);
-        
-        // Delete: Only elevated can delete for now
-        allow delete: if isElevated();
-    }
-
-
-    // Deny everything else
-    match /{document=**} {
-      allow read, write: if false;
-    }
   }
 }

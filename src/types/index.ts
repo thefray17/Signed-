@@ -1,4 +1,5 @@
 
+import { Timestamp } from "firebase/firestore";
 
 export type UserRole = 'user' | 'coadmin' | 'admin';
 export type UserStatus = 'pending' | 'approved' | 'rejected';
@@ -64,4 +65,16 @@ export interface Notification {
     };
     timestamp: any;
     read: boolean;
+}
+
+export interface AuditLog {
+    id: string;
+    actorUid: string;
+    actorEmail: string;
+    action: string;
+    targetUid?: string;
+    targetEmail?: string;
+    status: 'success' | 'failure';
+    details: Record<string, any>;
+    timestamp: Timestamp;
 }
